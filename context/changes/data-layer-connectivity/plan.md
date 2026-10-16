@@ -229,22 +229,22 @@ Not applicable — no existing data to migrate; this establishes the migration m
 
 #### Automated
 
-- [x] 2.1 go build ./... succeeds in backend/
-- [x] 2.2 go vet ./... succeeds in backend/
+- [x] 2.1 go build ./... succeeds in backend/ — 98711fe
+- [x] 2.2 go vet ./... succeeds in backend/ — 98711fe
 
 #### Manual
 
-- [x] 2.3 GET /healthz returns 200 with a reachable Postgres and correct env vars
-- [x] 2.4 GET /healthz returns 503 when Postgres is unreachable
-- [x] 2.5 Starting the backend with an unreachable DATABASE_URL fails fast with a clear error, not a hang
+- [x] 2.3 GET /healthz returns 200 with a reachable Postgres and correct env vars — 98711fe
+- [x] 2.4 GET /healthz returns 503 when Postgres is unreachable — 98711fe
+- [x] 2.5 Starting the backend with an unreachable DATABASE_URL fails fast with a clear error, not a hang — 98711fe
 
 ### Phase 3: Local dev setup
 
 #### Automated
 
-- [ ] 3.1 docker compose config succeeds, or is reported as a PREFLIGHT skip if Docker Compose is unavailable
+- [x] 3.1 docker compose config succeeds, or is reported as a PREFLIGHT skip if Docker Compose is unavailable
 
 #### Manual
 
-- [ ] 3.2 docker compose up -d starts a working local Postgres
-- [ ] 3.3 Data persists across a docker compose down / up cycle (named volume works)
+- [x] 3.2 docker compose up -d starts a working local Postgres
+- [x] 3.3 Data persists across a docker compose down / up cycle (named volume works)

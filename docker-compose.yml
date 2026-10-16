@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shelfmark
+      POSTGRES_PASSWORD: shelfmark
+      POSTGRES_DB: shelfmark
+    ports:
+      - "5432:5432"
+    volumes:
+      - shelfmark-db-data:/var/lib/postgresql/data
+
+volumes:
+  shelfmark-db-data:
