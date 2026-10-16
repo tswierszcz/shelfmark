@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { useAuth } from "../lib/auth";
 import { RequireAuth } from "../lib/require-auth";
@@ -19,6 +19,13 @@ function DashboardContent() {
         Logged in as <span className="font-medium">{me?.email}</span> (
         {me?.role})
       </p>
+      {me?.role === "admin" && (
+        <p className="mt-2">
+          <Link to="/catalog" className="underline">
+            Go to catalog
+          </Link>
+        </p>
+      )}
       <button
         type="button"
         onClick={handleLogout}

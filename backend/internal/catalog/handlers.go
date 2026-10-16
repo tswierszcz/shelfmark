@@ -129,6 +129,101 @@ func BatchProgressHandler(store *Store) http.HandlerFunc {
 	}
 }
 
+// libraryResponse is a Library plus the names of its attached categories.
+// The plan's contract for ListLibrariesHandler didn't spell out this exact
+// response shape; folding categories in here (rather than a separate
+// per-library endpoint) is the simplest way to let the catalog page show
+// "which libraries are uncategorized" without N follow-up requests.
+type libraryResponse struct {
+	Library
+	Categories []string `json:"categories"`
+}
+
+// ListLibrariesHandler returns a handler for GET /api/catalog/libraries: it
+// lists libraries matching the optional status/category/ecosystem query
+// params, each annotated with the names of its attached categories.
+func ListLibrariesHandler(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		filter := LibraryFilter{
+			Status:    r.URL.Query().Get("status"),
+			Category:  r.URL.Query().Get("category"),
+			Ecosystem: r.URL.Query().Get("ecosystem"),
+		}
+
+		ctx := r.Context()
+		libraries, err := store.ListLibraries(ctx, filter)
+		if err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to list libraries")
+			return
+		}
+
+		ids := make([]string, len(libraries))
+		for i, l := range libraries {
+			ids[i] = l.ID
+		}
+		categoryNames, err := store.CategoryNamesByLibrary(ctx, ids)
+		if err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to list library categories")
+			return
+		}
+
+		resp := make([]libraryResponse, len(libraries))
+		for i, l := range libraries {
+			names := categoryNames[l.ID]
+			if names == nil {
+				names = []string{}
+			}
+			resp[i] = libraryResponse{Library: l, Categories: names}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}
+}
+
+// ListTaxonomyHandler returns a handler for GET /api/catalog/categories: it
+// reports the full seeded taxonomy as a JSON array.
+func ListTaxonomyHandler(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		categories, err := store.ListTaxonomy(r.Context())
+		if err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to list taxonomy")
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(categories)
+	}
+}
+
+type attachCategoryRequest struct {
+	CategoryID string `json:"category_id"`
+}
+
+// AttachCategoryHandler returns a handler for POST
+// /api/catalog/libraries/{libraryID}/categories: it records a manual
+// (library, category) attachment, overwriting whatever source produced an
+// existing attachment for the same pair (AttachCategory's upsert
+// semantics).
+func AttachCategoryHandler(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		libraryID := r.PathValue("libraryID")
+
+		var req attachCategoryRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CategoryID == "" {
+			writeCatalogError(w, http.StatusBadRequest, "missing or malformed category_id")
+			return
+		}
+
+		if err := store.AttachCategory(r.Context(), libraryID, req.CategoryID, "manual"); err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to attach category")
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 // newBatchID generates a fresh v4-shaped UUID string. There is no uuid
 // package dependency in this module; this is the well-known ~10-line
 // crypto/rand pattern rather than a new dependency for it.

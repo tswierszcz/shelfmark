@@ -358,26 +358,26 @@ Not applicable — this is the first catalog data; nothing to migrate from.
 
 #### Automated
 
-- [x] 3.1 go build ./... succeeds in backend/
-- [x] 3.2 go vet ./... succeeds in backend/
-- [x] 3.3 Unit tests pass: go test ./backend/internal/catalog/...
+- [x] 3.1 go build ./... succeeds in backend/ — 692d47b
+- [x] 3.2 go vet ./... succeeds in backend/ — 692d47b
+- [x] 3.3 Unit tests pass: go test ./backend/internal/catalog/... — 692d47b
 
 #### Manual
 
-- [x] 3.4 Re-uploading the SBOM with real API keys set shows libraries transitioning to categorized/needs_manual with populated categories
-- [x] 3.5 An invalid OpenRouter API key results in failed status rather than a hang
+- [x] 3.4 Re-uploading the SBOM with real API keys set shows libraries transitioning to categorized/needs_manual with populated categories — 692d47b
+- [x] 3.5 An invalid OpenRouter API key results in failed status rather than a hang — 692d47b
 
 ### Phase 4: Admin UI
 
 #### Automated
 
-- [ ] 4.1 npm run typecheck succeeds in web/
-- [ ] 4.2 npm run build succeeds in web/
-- [ ] 4.3 go build ./..., go vet ./..., go test ./backend/internal/catalog/... succeed in backend/
+- [x] 4.1 npm run typecheck succeeds in web/
+- [x] 4.2 npm run build succeeds in web/
+- [x] 4.3 go build ./..., go vet ./..., go test ./backend/internal/catalog/... succeed in backend/
 
 #### Manual
 
-- [ ] 4.4 Admin can upload via /catalog UI and see progress move to completion
-- [ ] 4.5 Catalog table shows libraries with categories/status; status filter works
-- [ ] 4.6 Adding a category via the UI updates the displayed categories without reload
-- [ ] 4.7 Architect/Viewer visiting /catalog directly redirects to /dashboard
+- [x] 4.4 Admin can upload via /catalog UI and see progress move to completion
+- [x] 4.5 Catalog table shows libraries with categories/status; status filter works
+- [x] 4.6 Adding a category via the UI updates the displayed categories without reload
+- [x] 4.7 Architect/Viewer visiting /catalog directly redirects to /dashboard

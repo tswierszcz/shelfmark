@@ -15,8 +15,8 @@ import (
 // Category is one entry in the curated taxonomy seeded by migration
 // 0002_catalog_schema.
 type Category struct {
-	ID   string
-	Name string
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // NewLibrary holds the fields needed to insert a new libraries row, before
@@ -29,13 +29,13 @@ type NewLibrary struct {
 
 // Library is a full libraries row.
 type Library struct {
-	ID            string
-	Purl          string
-	Name          string
-	Ecosystem     string
-	GithubRepo    *string
-	Status        string
-	UploadBatchID string
+	ID            string  `json:"id"`
+	Purl          string  `json:"purl"`
+	Name          string  `json:"name"`
+	Ecosystem     string  `json:"ecosystem"`
+	GithubRepo    *string `json:"github_repo"`
+	Status        string  `json:"status"`
+	UploadBatchID string  `json:"upload_batch_id"`
 }
 
 // LibraryFilter narrows ListLibraries. Every field is optional (zero value
@@ -174,6 +174,46 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 	}
 
 	return libraries, nil
+}
+
+// CategoryNamesByLibrary returns the names of categories attached to each
+// library in libraryIDs, keyed by library ID. A library with no attachments
+// is simply absent from the returned map (callers should treat a missing
+// key the same as an empty slice).
+func (s *Store) CategoryNamesByLibrary(ctx context.Context, libraryIDs []string) (map[string][]string, error) {
+	result := map[string][]string{}
+	if len(libraryIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := s.pool.Query(ctx,
+		`SELECT lc.library_id, c.name
+		 FROM library_categories lc
+		 JOIN categories c ON c.id = lc.category_id
+		 WHERE lc.library_id::text = ANY($1)
+		 ORDER BY c.name`,
+		libraryIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: failed to list categories by library: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			libraryID string
+			name      string
+		)
+		if err := rows.Scan(&libraryID, &name); err != nil {
+			return nil, fmt.Errorf("catalog: failed to scan library category: %w", err)
+		}
+		result[libraryID] = append(result[libraryID], name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("catalog: failed to list categories by library: %w", err)
+	}
+
+	return result, nil
 }
 
 // UpdateLibraryStatus sets a library's status and, when githubRepo is
