@@ -287,12 +287,12 @@ Not applicable — no existing accounts or sessions to migrate from.
 
 #### Automated
 
-- [x] 3.1 npm run typecheck succeeds in web/
-- [x] 3.2 npm run build succeeds in web/
+- [x] 3.1 npm run typecheck succeeds in web/ — 5257b88
+- [x] 3.2 npm run build succeeds in web/ — 5257b88
 
 #### Manual
 
-- [x] 3.3 Visiting /dashboard while logged out redirects to /login
-- [x] 3.4 Logging in with each of the three role accounts shows the correct email/role on /dashboard
-- [x] 3.5 Logout returns the user to a logged-out state
-- [x] 3.6 An invalid login attempt shows an error and stays on /login
+- [x] 3.3 Visiting /dashboard while logged out redirects to /login — 5257b88
+- [x] 3.4 Logging in with each of the three role accounts shows the correct email/role on /dashboard — 5257b88
+- [x] 3.5 Logout returns the user to a logged-out state — 5257b88
+- [x] 3.6 An invalid login attempt shows an error and stays on /login — 5257b88
