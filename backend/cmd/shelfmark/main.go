@@ -5,16 +5,25 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/tswierszcz/shelfmark/backend/internal/auth"
 )
 
 func main() {
 	addr := ":" + envOr("PORT", "8080")
 	staticDir := envOr("STATIC_DIR", "../web/build/client")
 
+	accounts, err := auth.LoadAccounts()
+	if err != nil {
+		log.Fatalf("auth: failed to load accounts: %v", err)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
+	mux.HandleFunc("POST /api/login", auth.LoginHandler(accounts))
+	mux.HandleFunc("POST /api/logout", auth.LogoutHandler())
 	mux.Handle("GET /", spaHandler(staticDir))
 
 	log.Printf("listening on %s, serving SPA from %s", addr, staticDir)
