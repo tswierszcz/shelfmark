@@ -2,36 +2,12 @@ package db
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 )
 
-// withEnv sets key to value for the duration of the test and restores the
-// previous value (or unsets it) afterward.
-func withEnv(t *testing.T, key, value string) {
-	t.Helper()
-	prev, had := os.LookupEnv(key)
-	if err := os.Setenv(key, value); err != nil {
-		t.Fatalf("failed to set %s: %v", key, err)
-	}
-	t.Cleanup(func() {
-		if had {
-			os.Setenv(key, prev)
-		} else {
-			os.Unsetenv(key)
-		}
-	})
-}
-
 func TestConnect_MissingDatabaseURL(t *testing.T) {
-	prev, had := os.LookupEnv("DATABASE_URL")
-	os.Unsetenv("DATABASE_URL")
-	t.Cleanup(func() {
-		if had {
-			os.Setenv("DATABASE_URL", prev)
-		}
-	})
+	t.Setenv("DATABASE_URL", "")
 
 	_, err := Connect(context.Background())
 	if err == nil {
@@ -43,7 +19,7 @@ func TestConnect_MissingDatabaseURL(t *testing.T) {
 }
 
 func TestConnect_MalformedDatabaseURL(t *testing.T) {
-	withEnv(t, "DATABASE_URL", "not-a-valid-connection-string://[::::]")
+	t.Setenv("DATABASE_URL", "not-a-valid-connection-string://[::::]")
 
 	_, err := Connect(context.Background())
 	if err == nil {

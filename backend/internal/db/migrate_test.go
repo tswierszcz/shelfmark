@@ -49,7 +49,7 @@ func startTestPostgres(t *testing.T) string {
 
 	// Connect (used by waitForPostgres) reads DATABASE_URL from the
 	// environment, so set it before polling for readiness.
-	withEnv(t, "DATABASE_URL", databaseURL)
+	t.Setenv("DATABASE_URL", databaseURL)
 	waitForPostgres(t, databaseURL)
 
 	return databaseURL

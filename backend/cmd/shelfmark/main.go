@@ -25,6 +25,7 @@ func main() {
 		log.Fatalf("db: failed to connect: %v", err)
 	}
 	if err := db.Migrate(os.Getenv("DATABASE_URL")); err != nil {
+		pool.Close()
 		log.Fatalf("db: failed to migrate: %v", err)
 	}
 

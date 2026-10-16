@@ -20,10 +20,10 @@ func HealthCheck(pool *pgxpool.Pool) http.HandlerFunc {
 
 		if err := pool.Ping(ctx); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("db unreachable"))
+			_, _ = w.Write([]byte("db unreachable"))
 			return
 		}
 
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}
 }
