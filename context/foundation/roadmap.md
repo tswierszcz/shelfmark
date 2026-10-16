@@ -40,7 +40,7 @@ In organizations with dozens to hundreds of repositories, managing dependencies 
 | ID   | Change ID                     | Outcome (user can …)                                                          | Prerequisites | PRD refs                       | Status   |
 | ---- | ------------------------------ | ------------------------------------------------------------------------------ | -------------- | ------------------------------- | -------- |
 | F-01 | minimal-auth-role-scaffold     | (foundation) users log in and actions are gated by role                       | —              | Access Control section          | done     |
-| F-02 | data-layer-connectivity        | (foundation) the app can persist and migrate structured data                  | —              | FR-001, FR-002                  | in-progress |
+| F-02 | data-layer-connectivity        | (foundation) the app can persist and migrate structured data                  | —              | FR-001, FR-002                  | done     |
 | S-01 | seed-classification-catalog    | Admin can seed and categorize the library catalog                             | F-01, F-02     | FR-001, FR-002, FR-003, FR-004  | proposed |
 | S-02 | mark-strategic-libraries       | Architect can view the org's libraries and mark a direct library as strategic | S-01, F-01     | FR-006, FR-007                  | proposed |
 | S-03 | project-redundancy-report      | Architect can upload a project's SBOM and see a redundancy report             | S-01, S-02, F-01 | FR-005, FR-008, US-01          | proposed |
@@ -92,7 +92,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Chosen as its own foundation (not a hidden step inside S-01) because the user's main investment choice for this milestone is the data layer — every slice from here on persists something, and getting connectivity and migrations wrong once is cheaper than fixing it per slice.
-- **Status:** in-progress
+- **Status:** done
 
 ## Slices
 
@@ -165,3 +165,4 @@ This table is the clean handoff to Jira/Linear or any MCP-backed backlog.
 ## Done
 
 - **F-01: (foundation) users log in and actions are gated by role** — Archived 2026-10-16 → `context/archive/2026-10-16-minimal-auth-role-scaffold/`. Lesson: —.
+- **F-02: (foundation) the app can persist and migrate structured data** — Archived 2026-10-16 → `context/archive/2026-10-16-data-layer-connectivity/`. Lesson: —.
