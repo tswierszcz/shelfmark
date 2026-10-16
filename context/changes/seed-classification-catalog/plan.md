@@ -345,27 +345,27 @@ Not applicable — this is the first catalog data; nothing to migrate from.
 
 #### Automated
 
-- [x] 2.1 go build ./... succeeds in backend/
-- [x] 2.2 go vet ./... succeeds in backend/
-- [x] 2.3 Unit tests pass: go test ./backend/internal/catalog/...
+- [x] 2.1 go build ./... succeeds in backend/ — 85d38cb
+- [x] 2.2 go vet ./... succeeds in backend/ — 85d38cb
+- [x] 2.3 Unit tests pass: go test ./backend/internal/catalog/... — 85d38cb
 
 #### Manual
 
-- [x] 2.4 Uploading a real SBOM creates the expected library rows
-- [x] 2.5 Uploading a mixed-validity CSV reports correct parsed/skipped counts
+- [x] 2.4 Uploading a real SBOM creates the expected library rows — 85d38cb
+- [x] 2.5 Uploading a mixed-validity CSV reports correct parsed/skipped counts — 85d38cb
 
 ### Phase 3: Categorization pipeline
 
 #### Automated
 
-- [ ] 3.1 go build ./... succeeds in backend/
-- [ ] 3.2 go vet ./... succeeds in backend/
-- [ ] 3.3 Unit tests pass: go test ./backend/internal/catalog/...
+- [x] 3.1 go build ./... succeeds in backend/
+- [x] 3.2 go vet ./... succeeds in backend/
+- [x] 3.3 Unit tests pass: go test ./backend/internal/catalog/...
 
 #### Manual
 
-- [ ] 3.4 Re-uploading the SBOM with real API keys set shows libraries transitioning to categorized/needs_manual with populated categories
-- [ ] 3.5 An invalid OpenRouter API key results in failed status rather than a hang
+- [x] 3.4 Re-uploading the SBOM with real API keys set shows libraries transitioning to categorized/needs_manual with populated categories
+- [x] 3.5 An invalid OpenRouter API key results in failed status rather than a hang
 
 ### Phase 4: Admin UI
 

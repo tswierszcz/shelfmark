@@ -32,12 +32,19 @@ func main() {
 
 	catalogStore := catalog.NewStore(pool)
 
+	openRouterClient, err := catalog.NewOpenRouterClient()
+	if err != nil {
+		log.Fatalf("catalog: failed to construct openrouter client: %v", err)
+	}
+	finders := []catalog.RepoFinder{catalog.NewDepsDevClient(), openRouterClient}
+	catalogQueue := catalog.NewQueue(catalogStore, finders, catalog.NewGitHubClient(), openRouterClient, 5)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", db.HealthCheck(pool))
 	mux.HandleFunc("POST /api/login", auth.LoginHandler(accounts))
 	mux.HandleFunc("POST /api/logout", auth.LogoutHandler())
 	mux.HandleFunc("GET /api/me", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(auth.MeHandler()))
-	mux.HandleFunc("POST /api/catalog/upload", auth.RequireRole(auth.RoleAdmin)(catalog.UploadHandler(catalogStore, catalog.NewNoopEnqueuer())))
+	mux.HandleFunc("POST /api/catalog/upload", auth.RequireRole(auth.RoleAdmin)(catalog.UploadHandler(catalogStore, catalogQueue)))
 	mux.HandleFunc("GET /api/catalog/batches/{batchID}", auth.RequireRole(auth.RoleAdmin)(catalog.BatchProgressHandler(catalogStore)))
 	mux.Handle("GET /", spaHandler(staticDir))
 
