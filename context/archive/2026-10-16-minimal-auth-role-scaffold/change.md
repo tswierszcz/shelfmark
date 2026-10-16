@@ -1,10 +1,10 @@
 ---
 change_id: minimal-auth-role-scaffold
 title: Minimal auth and role scaffold
-status: implemented
+status: archived
 created: 2026-10-16
 updated: 2026-10-16
-archived_at: null
+archived_at: 2026-10-16T10:37:28Z
 ---
 
 ## Notes

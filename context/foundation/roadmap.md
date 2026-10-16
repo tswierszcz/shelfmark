@@ -39,7 +39,7 @@ In organizations with dozens to hundreds of repositories, managing dependencies 
 
 | ID   | Change ID                     | Outcome (user can …)                                                          | Prerequisites | PRD refs                       | Status   |
 | ---- | ------------------------------ | ------------------------------------------------------------------------------ | -------------- | ------------------------------- | -------- |
-| F-01 | minimal-auth-role-scaffold     | (foundation) users log in and actions are gated by role                       | —              | Access Control section          | in-progress |
+| F-01 | minimal-auth-role-scaffold     | (foundation) users log in and actions are gated by role                       | —              | Access Control section          | done     |
 | F-02 | data-layer-connectivity        | (foundation) the app can persist and migrate structured data                  | —              | FR-001, FR-002                  | ready    |
 | S-01 | seed-classification-catalog    | Admin can seed and categorize the library catalog                             | F-01, F-02     | FR-001, FR-002, FR-003, FR-004  | proposed |
 | S-02 | mark-strategic-libraries       | Architect can view the org's libraries and mark a direct library as strategic | S-01, F-01     | FR-006, FR-007                  | proposed |
@@ -79,7 +79,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Sequenced first because every downstream slice gates an action by role (admin vs. architect vs. viewer); retrofitting checks into already-working slices is more error-prone than building the gate once up front.
-- **Status:** in-progress
+- **Status:** done
 
 ### F-02: Data layer connectivity
 
@@ -164,4 +164,4 @@ This table is the clean handoff to Jira/Linear or any MCP-backed backlog.
 
 ## Done
 
-(Empty on first generation. `/10x-archive` appends an entry here when a change whose `Change ID` matches a slice above is archived.)
+- **F-01: (foundation) users log in and actions are gated by role** — Archived 2026-10-16 → `context/archive/2026-10-16-minimal-auth-role-scaffold/`. Lesson: —.
