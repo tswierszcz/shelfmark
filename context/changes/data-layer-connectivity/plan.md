@@ -216,27 +216,27 @@ Not applicable — no existing data to migrate; this establishes the migration m
 
 #### Automated
 
-- [x] 1.1 go build ./... succeeds in backend/
-- [x] 1.2 go vet ./... succeeds in backend/
-- [x] 1.3 Unit tests pass: go test ./backend/internal/db/...
-- [x] 1.4 Docker-gated integration test applies the baseline migration and confirms pgcrypto is present (or skips cleanly without Docker)
+- [x] 1.1 go build ./... succeeds in backend/ — e653c43
+- [x] 1.2 go vet ./... succeeds in backend/ — e653c43
+- [x] 1.3 Unit tests pass: go test ./backend/internal/db/... — e653c43
+- [x] 1.4 Docker-gated integration test applies the baseline migration and confirms pgcrypto is present (or skips cleanly without Docker) — e653c43
 
 #### Manual
 
-- [x] 1.5 Running Connect + Migrate against a manually-started local Postgres applies the migration and pgcrypto appears in pg_extension
+- [x] 1.5 Running Connect + Migrate against a manually-started local Postgres applies the migration and pgcrypto appears in pg_extension — e653c43
 
 ### Phase 2: Health check + wiring
 
 #### Automated
 
-- [ ] 2.1 go build ./... succeeds in backend/
-- [ ] 2.2 go vet ./... succeeds in backend/
+- [x] 2.1 go build ./... succeeds in backend/
+- [x] 2.2 go vet ./... succeeds in backend/
 
 #### Manual
 
-- [ ] 2.3 GET /healthz returns 200 with a reachable Postgres and correct env vars
-- [ ] 2.4 GET /healthz returns 503 when Postgres is unreachable
-- [ ] 2.5 Starting the backend with an unreachable DATABASE_URL fails fast with a clear error, not a hang
+- [x] 2.3 GET /healthz returns 200 with a reachable Postgres and correct env vars
+- [x] 2.4 GET /healthz returns 503 when Postgres is unreachable
+- [x] 2.5 Starting the backend with an unreachable DATABASE_URL fails fast with a clear error, not a hang
 
 ### Phase 3: Local dev setup
 

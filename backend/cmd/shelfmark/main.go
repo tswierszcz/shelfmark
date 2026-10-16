@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/db"
 )
 
 func main() {
@@ -18,10 +20,16 @@ func main() {
 		log.Fatalf("auth: failed to load accounts: %v", err)
 	}
 
+	pool, err := db.Connect(context.Background())
+	if err != nil {
+		log.Fatalf("db: failed to connect: %v", err)
+	}
+	if err := db.Migrate(os.Getenv("DATABASE_URL")); err != nil {
+		log.Fatalf("db: failed to migrate: %v", err)
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok"))
-	})
+	mux.HandleFunc("GET /healthz", db.HealthCheck(pool))
 	mux.HandleFunc("POST /api/login", auth.LoginHandler(accounts))
 	mux.HandleFunc("POST /api/logout", auth.LogoutHandler())
 	mux.HandleFunc("GET /api/me", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(auth.MeHandler()))
