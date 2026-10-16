@@ -333,26 +333,26 @@ Not applicable — this is the first catalog data; nothing to migrate from.
 
 #### Automated
 
-- [x] 1.1 go build ./... succeeds in backend/
-- [x] 1.2 go vet ./... succeeds in backend/
-- [x] 1.3 Unit/integration tests pass: go test ./backend/internal/catalog/...
+- [x] 1.1 go build ./... succeeds in backend/ — c57b2de
+- [x] 1.2 go vet ./... succeeds in backend/ — c57b2de
+- [x] 1.3 Unit/integration tests pass: go test ./backend/internal/catalog/... — c57b2de
 
 #### Manual
 
-- [x] 1.4 Migration seeds the taxonomy, visible via SELECT name FROM categories
+- [x] 1.4 Migration seeds the taxonomy, visible via SELECT name FROM categories — c57b2de
 
 ### Phase 2: Ingestion
 
 #### Automated
 
-- [ ] 2.1 go build ./... succeeds in backend/
-- [ ] 2.2 go vet ./... succeeds in backend/
-- [ ] 2.3 Unit tests pass: go test ./backend/internal/catalog/...
+- [x] 2.1 go build ./... succeeds in backend/
+- [x] 2.2 go vet ./... succeeds in backend/
+- [x] 2.3 Unit tests pass: go test ./backend/internal/catalog/...
 
 #### Manual
 
-- [ ] 2.4 Uploading a real SBOM creates the expected library rows
-- [ ] 2.5 Uploading a mixed-validity CSV reports correct parsed/skipped counts
+- [x] 2.4 Uploading a real SBOM creates the expected library rows
+- [x] 2.5 Uploading a mixed-validity CSV reports correct parsed/skipped counts
 
 ### Phase 3: Categorization pipeline
 

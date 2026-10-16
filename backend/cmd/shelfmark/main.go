@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/catalog"
 	"github.com/tswierszcz/shelfmark/backend/internal/db"
 )
 
@@ -29,11 +30,15 @@ func main() {
 		log.Fatalf("db: failed to migrate: %v", err)
 	}
 
+	catalogStore := catalog.NewStore(pool)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", db.HealthCheck(pool))
 	mux.HandleFunc("POST /api/login", auth.LoginHandler(accounts))
 	mux.HandleFunc("POST /api/logout", auth.LogoutHandler())
 	mux.HandleFunc("GET /api/me", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(auth.MeHandler()))
+	mux.HandleFunc("POST /api/catalog/upload", auth.RequireRole(auth.RoleAdmin)(catalog.UploadHandler(catalogStore, catalog.NewNoopEnqueuer())))
+	mux.HandleFunc("GET /api/catalog/batches/{batchID}", auth.RequireRole(auth.RoleAdmin)(catalog.BatchProgressHandler(catalogStore)))
 	mux.Handle("GET /", spaHandler(staticDir))
 
 	log.Printf("listening on %s, serving SPA from %s", addr, staticDir)

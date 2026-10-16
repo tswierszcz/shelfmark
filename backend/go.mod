@@ -3,8 +3,10 @@ module github.com/tswierszcz/shelfmark/backend
 go 1.27.1
 
 require (
+	github.com/CycloneDX/cyclonedx-go v0.12.0
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/jackc/pgx/v5 v5.11.0
+	github.com/package-url/packageurl-go v0.1.7
 	golang.org/x/crypto v0.58.0
 )
 
