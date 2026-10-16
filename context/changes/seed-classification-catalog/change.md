@@ -1,7 +1,7 @@
 ---
 change_id: seed-classification-catalog
 title: Admin seeds and categorizes the library catalog
-status: implementing
+status: implemented
 created: 2026-10-16
 updated: 2026-10-16
 archived_at: null
