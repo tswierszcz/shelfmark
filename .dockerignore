@@ -1,0 +1,10 @@
+.git
+.claude
+context
+**/node_modules
+web/build
+web/.react-router
+backend/shelfmark
+.env
+.env.*
+*.md

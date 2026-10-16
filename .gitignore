@@ -1,0 +1,31 @@
+# Go build output
+/backend/shelfmark
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Go workspace (local only)
+go.work
+go.work.sum
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Frontend (details in web/.gitignore)
+node_modules/
+
+# Bootstrapper temp directory
+/.bootstrap-scaffold/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Editors and OS
+.idea/
+*.swp
+.DS_Store

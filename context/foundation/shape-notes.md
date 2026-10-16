@@ -1,200 +1,133 @@
 ---
 project: "Shelfmark"
 context_type: greenfield
-created: 2026-10-10
-updated: 2026-10-10
+created: 2026-10-15
+updated: 2026-10-15
 checkpoint:
   current_phase: 8
   phases_completed: [1, 2, 3, 4, 5, 6, 7]
+  frs_drafted: 8
   gray_areas_resolved:
     - topic: "pain category"
-      decision: "decision paralysis + invisible data + coordination overhead; plus choosing libraries to migrate to paid remediated builds (e.g. Chainguard)"
+      decision: "coordination overhead + invisible/scattered data + workflow friction + decision paralysis, all present"
     - topic: "insight"
-      decision: "number of libraries = attack surface"
+      decision: "number of libraries is the attack surface; CVE scanners fix one vulnerability at a time but never reduce the set of dependencies that must be trusted"
     - topic: "primary persona scope"
-      decision: "architects / platform engineers across many organizations"
-    - topic: "access model"
-      decision: "login per organization instance; three roles from MVP: admin, architect, viewer"
-    - topic: "SBOM import permission"
-      decision: "admin and architect can import SBOMs"
-    - topic: "MVP scope"
-      decision: "scoped down: Maven only, ~100-200 library catalog, deterministic categorization (LLM is secondary), GitHub health metrics moved to v2"
-    - topic: "role provisioning"
-      decision: "accounts and roles defined via configuration/seed at instance install; no user-management UI in MVP"
-    - topic: "MVP size after FR review"
-      decision: "user keeps 6 weeks despite adding Library view, Project view and taxonomy management as must-haves"
-    - topic: "redundancy rule"
-      decision: "more than one direct-dependency library in a category"
-    - topic: "LLM categorization"
-      decision: "must-have (raised during Socratic round on FR-003)"
-    - topic: "who names the standard"
-      decision: "system suggests, architect accepts or overrides"
-    - topic: "standard suggestion inputs in MVP"
-      decision: "usage reach only (number of projects with the library as a direct runtime dependency); upstream health and migration cost in v2"
-    - topic: "LLM vs data residency"
-      decision: "only public Maven coordinates from the base catalog are sent to an external LLM, never which customer projects use them"
-    - topic: "SSO"
-      decision: "not in MVP; accounts from configuration, SSO later"
-
-  frs_drafted: 13
+      decision: "architects / platform engineers across many organizations with dozens-to-hundreds of repositories"
+    - topic: "classification knowledge base"
+      decision: "solution requires an internal knowledge base/taxonomy classifying libraries by capability; user SBOM data is confronted against this base to surface redundancy. Building/seeding this base is the first necessary stage of the project — without it, analyzing user data shows nothing."
+    - topic: "classification sourcing (noted, detail deferred to Business Logic phase)"
+      decision: "three cascading sources envisioned: 1) rule-based (e.g. from repo metadata such as GitHub), 2) LLM-based, 3) manual fallback where the first two are insufficient — for the first phase, manual can be a direct database entry, no UI required"
   quality_check_status: accepted
 product_type: web-app
 target_scale:
-  users: medium
+  users: small
   qps: low
   data_volume: small
 timeline_budget:
-  mvp_weeks: 6
-  hard_deadline: null
+  mvp_weeks: 12
+  hard_deadline: "2027-01-10"
   after_hours_only: true
 ---
 
-# Shelfmark — shape notes
-
-## Seed idea (verbatim from user)
-
-Shelfmark to nakładka nad danymi o zależnościach, które organizacja już wytwarza (SBOM-y, wyniki skanerów CVE). Nie generuje SBOM-ów ani nie skanuje podatności — zamiast tego dodaje warstwę, której brakuje istniejącym narzędziom: klasyfikację bibliotek według tego, co faktycznie robią.
-
-Każda biblioteka dostaje tagi z kuratorowanej taksonomii capabilities (http/client, serialization/json itd.), sygnały zdrowia projektu upstream (ostatnie wydanie, maintainerzy, licencja, status archived) oraz informację o roli w projekcie — direct czy transitive, runtime czy test. Z połączenia tych trzech rzeczy powstaje to, czego nie widać w żadnym skanerze: redundancja funkcjonalna (pięć bibliotek robiących jedną rzecz), biblioteki martwe używane bezpośrednio w produkcji, priorytet CVE ważony realnym zasięgiem, oraz szacowany koszt konsolidacji.
-
-Produkt daje trzy widoki — Capabilities (co konsolidować), Biblioteka (gdzie i jak głęboko siedzi) i Projekt (co naprawić u siebie) — plus możliwość ustalania rekomendacji: która biblioteka w danej kategorii jest standardem, a która do wycofania, z uzasadnieniem i historią decyzji.
-
-Architektonicznie dzieli się na dwie płaszczyzny: centralna baza wiedzy o publicznych pakietach (taksonomia, tagi, zdrowie), publikowana jako podpisany snapshot, oraz instancja u klienta, która importuje ten snapshot i łączy go z własnymi SBOM-ami. Dane o zależnościach klienta nigdy nie opuszczają jego infrastruktury — to warunek sprzedaży on-premise i jednocześnie ścieżka do późniejszej wersji chmurowej bez zmian w aplikacji.
-
-Odbiorca to platform engineering i architektura w organizacjach z kilkudziesięcioma repozytoriami — nie security, bo tam budżety są już wydane na SCA, a Shelfmark odpowiada na inne pytanie: nie „co jest podatne", tylko „co jest zbędne".
-
-Additional user-stated inputs: starting from scratch; SBOM input generated by existing tools; capabilities initially read from GitHub, later via LLM.
+# Shelfmark — shape notes (change session)
 
 ## Vision & Problem Statement
 
-In organizations with dozens of repositories, nobody controls which libraries enter the codebase — it is a free-for-all. Functional redundancy is huge, and every extra library expands the attack surface: supply-chain malware and vulnerabilities, increasingly exploited with AI-assisted attacks. The pain peaks during mass version bumps and when deciding which libraries to migrate to paid remediated builds (e.g. Chainguard), because the open-source community often cannot keep up with fixes, especially for zero-day vulnerabilities. Architects lack the data to name a standard library per category, and library decisions are made separately by each team.
+In organizations whose teams carry thousands to hundreds of thousands of dependencies, managing those dependencies — upgrading versions, tracking CVEs, chasing upstream support, researching project health metrics, and increasingly building "remediated" replacement builds — consumes enormous ongoing engineering effort. The cost recurs continuously: every version bump and every new CVE repeats the same manual, scattered research.
 
-Insight: the number of libraries is the attack surface. SCA scanners and update bots fix vulnerabilities one by one but do not reduce the number of dependencies that must be trusted. Shelfmark answers "what is redundant", not "what is vulnerable".
+Insight: the number of libraries in use is itself the attack surface. CVE scanners and version-bump bots fix vulnerabilities one at a time, but they never reduce the set of dependencies an organization has to trust. Nobody answers "what is redundant" — only "what is vulnerable."
+
+The solution requires an internal knowledge base that classifies libraries by capability (what each library actually does). An organization's own dependency data (SBOMs) is confronted against this classification base to surface functional redundancy. Building and seeding this classification base is the first necessary stage of the project — without it, analyzing an organization's own data would show nothing. (How the base is populated — rule-based, LLM-based, manual fallback — is a mechanism decision deferred to the Business Logic phase of this session.)
 
 ## User & Persona
 
-Primary persona: an architect or platform engineer responsible for library standards in an organization with dozens of repositories; the product targets many such organizations. They reach for Shelfmark when planning a mass version bump, reducing the dependency count, or choosing which libraries to migrate to remediated builds.
+Primary persona: an architect or platform engineer responsible for library standards, present across many organizations with dozens to hundreds of repositories. They feel this pain continuously — at every mass version bump and every CVE response.
 
 ## Access Control
 
-Login is required to use an organization's Shelfmark instance. Three roles from the first version:
+Login required (email + password); accounts/roles provisioned via instance configuration. Three roles:
 
 | Role | Capabilities |
 |---|---|
-| Admin | Users and roles provisioned via configuration (no UI in MVP); populate the base catalog (name list or SBOM catalog-enrichment mode); upload project SBOMs; correct library categories; manage the taxonomy |
-| Architect | Everything a viewer can do; upload project SBOMs for analysis (not catalog enrichment); set and change recommendations (standard / to retire) with justification |
-| Viewer | See the Capabilities, Library and Project views and recommendations with their history |
-
-Accounts and roles are provisioned through instance configuration / seed at install time; there is no user-management UI and no SSO in the MVP (SSO later).
-
-## MVP flow (scoped down)
-
-1. Admin logs in and populates a base catalog of ~100–200 Maven libraries (name list, or SBOMs in catalog-enrichment mode).
-2. The application assigns each library categories from the capability taxonomy using deterministic rules, with LLM categorization where rules are insufficient.
-3. An architect (or admin) uploads SBOMs from several projects.
-4. The architect sees a report: libraries from the SBOMs grouped by category, with functional redundancy highlighted.
-
-Deferred to v2 (user decision): GitHub health metrics. Scope cuts: single ecosystem (Maven), smaller base catalog instead of ~1000.
+| Admin | Manages users/roles (via configuration); populates and corrects the classification knowledge base (library catalog + capability categories); uploads project SBOMs |
+| Architect | Uploads project SBOMs for analysis; sets and changes recommendations (standard / to retire) with justification |
+| Viewer | Views reports and current recommendations; no edit capabilities |
 
 ## Success Criteria
 
 ### Primary
-- An architect uploads SBOMs from several Maven projects and sees a report that groups their libraries by capability category and highlights functional redundancy.
+- MVP flow, part 1 (catalog seeding): Admin enters a purl list or SBOM; the system derives purls from the SBOM. For each purl, the system finds (or asks an LLM to find) the library's GitHub link, pulls tags from GitHub as categorization, then asks an LLM whether that categorization is correct — if not, the LLM adds its own categories.
+- MVP flow, part 2 (organization analysis): Architect has a "My organization" view; they can mark which library in a category is strategic/standard. They repeatedly upload a project's SBOM and get a report of that project's libraries by category, flagging redundancy (two libraries in the same category within one project). An organization-level report shows redundancy across all uploaded projects so the architect can pick strategic libraries.
 
 ### Secondary
-- The architect accepts the suggested standard (FR-013) without overriding it in most redundant categories.
+- Where possible, the system fetches current health metrics for a library from the web, as an enrichment on top of the categorization.
 
 ### Guardrails
-- The report distinguishes direct from transitive dependencies.
-
-## Functional Requirements
-
-### Access
-- FR-001: User can log in to their organization's Shelfmark instance. Priority: must-have
-  > Socrates: Counter-argument offered: "on-prem behind VPN needs no login". Resolution: no counter-argument; stands as written.
-
-### Catalog & categorization
-- FR-002: Admin can populate the base library catalog either by uploading a list of Maven library names or by uploading SBOMs in catalog-enrichment mode (their libraries are added to the catalog). Architects cannot use catalog-enrichment mode. Priority: must-have
-  > Socrates: Counter-argument considered: "the catalog could be built from SBOMs, making a separate upload redundant". Resolution: both paths kept — name-list upload and admin-only SBOM upload in catalog-enrichment mode.
-- FR-003: System can assign capability categories from the taxonomy to catalog libraries using deterministic rules. Priority: must-have
-  > Socrates: Counter-argument considered: "deterministic rules will cover only a small share of libraries". Resolution: kept, and LLM categorization (FR-004) raised to must-have to reach useful coverage.
-- FR-004: System can assign capability categories using an LLM where deterministic rules are insufficient. Priority: must-have
-  > Socrates: Counter-arguments offered: "LLM in the instance breaks the on-prem promise", "non-deterministic tags are hard to test". Resolution: no counter-argument; stands. Priority raised from nice-to-have during the FR-003 challenge.
-- FR-005: Admin can manually correct a library's category. Priority: must-have
-  > Socrates: Counter-argument considered: "local corrections will diverge from the future central knowledge base". Resolution: narrowed to admin only (was admin or architect) to limit divergence.
-- FR-006: Admin can manage the capability taxonomy (add, change, remove categories). Priority: must-have
-  > Socrates: Counter-argument considered: "the taxonomy should be shared across all organizations". Resolution: stays instance-level in the MVP; moves to the central knowledge base in v2 (see Open Questions).
-
-### SBOMs
-- FR-007: Architect or admin can upload project SBOMs for analysis. Priority: must-have
-  > Socrates: Counter-arguments offered: "manual upload goes stale without CI feed", "SBOM formats differ (CycloneDX vs SPDX)". Resolution: no counter-argument; stands as written.
-- FR-008: Uploading an SBOM for an existing project creates a new version of that project's SBOM; previous versions are kept and reports use the latest version. Priority: must-have
-  > Socrates: Original FR was "delete or replace an SBOM" (nice-to-have). Resolution: replaced by versioning — SBOMs are versioned, a new upload is a new version; raised to must-have.
-
-### Views
-- FR-009: User can view the Capabilities report: categories, the libraries in each, highlighted functional redundancy, and direct vs transitive role. Priority: must-have
-  > Socrates: Counter-arguments offered: "redundancy is not always a problem", "report lacks library versions". Resolution: no counter-argument; stands as written.
-- FR-010: User can view the Library view: which projects use a library and how deep it sits. Priority: must-have
-  > Socrates: Counter-arguments offered: "depth needs a full dependency graph not every SBOM has", "duplicates the Capabilities report drill-down". Resolution: no counter-argument; stands as written.
-- FR-011: User can view the Project view, which flags for a given project: libraries outside the category standard, redundancy within the project, and libraries marked to-retire that the project uses. Priority: must-have
-  > Socrates: Counter-argument considered: "'what to fix' is undefined". Resolution: defined as the three flags above.
-
-### Recommendations
-- FR-012: Architect can mark a library within a category as standard or to-retire, with a justification. Priority: must-have
-  > Socrates: Counter-arguments offered: "without decision history changes are opaque", "a recommendation without enforcement changes nothing". Resolution: no counter-argument; stands as written.
-- FR-013: System can suggest the standard library for each redundant category; the architect accepts or overrides the suggestion (FR-012). Priority: must-have
-  > Socrates: Added in Phase 5 to match the business rule (the system names the standard). Not separately challenged.
-
-Out of MVP (user decision): user/role management UI; history of recommendation decisions.
-
-## User Stories
-
-### US-01: Architect sees functional redundancy across their projects
-
-- **Given** a logged-in architect and a base catalog of Maven libraries with assigned categories
-- **When** they upload SBOMs of several projects and open the Capabilities report
-- **Then** they see the libraries from those projects grouped by category, with categories containing more than one direct runtime dependency highlighted as redundant, and each library marked direct or transitive
-
-#### Acceptance Criteria
-- A category counts as redundant when it contains more than one library used as a direct runtime dependency; transitive and test-scope libraries are shown but do not trigger redundancy.
-
-## Business Logic
-
-For each capability category in which the organization uses more than one library as a direct runtime dependency, Shelfmark indicates which of them should become the standard — based on usage reach, upstream project health, and the cost of migrating away from the others.
-
-Inputs: the organization's project SBOMs (latest version per project), with each library's role (direct/transitive) and scope (runtime/test), and each library's capability category. Output: for each redundant category, a suggested standard library, which the architect accepts or overrides with a justification; libraries not chosen become candidates to retire.
-
-MVP subset (user decision): the suggestion uses usage reach only — the number of projects in which the library is a direct runtime dependency; ties are resolved by the architect. Upstream health and migration cost join the rule in v2. The user encounters the suggestion in the Capabilities report, and its consequences in the Project view flags (FR-011).
-
-## Non-Functional Requirements
-
-- The customer's SBOM and dependency data never leave the customer's infrastructure. Only public Maven coordinates from the base catalog may be sent to an external categorization service, never information about which customer projects use them.
-
-## Non-Goals
-
-- No central knowledge base or signed snapshot — the MVP is a single organization instance; the second plane comes in v2.
-- No SBOM generation and no CVE scanning (including no CVE prioritization) — Shelfmark consumes SBOMs produced by existing tools and is not a scanner.
-- No ecosystems other than Maven — npm, PyPI, Go and others later.
-- No enforcement of standards in CI and no PR blocking — Shelfmark recommends, it does not block.
-- No upstream health metrics (GitHub) in the MVP — deferred to v2 (user decision, Phase 3).
-- No migration-cost estimate in the MVP — deferred to v2 (user decision, Phase 5).
-- No history of recommendation decisions in the MVP — user decision, Phase 4.
-- No user/role management UI — accounts and roles provisioned via configuration (user decision, Phase 4).
-- No SSO in the MVP — accounts from configuration; SSO later (user decision, cross-check).
+- SBOM data uploaded to the system contains no private/customer data — only library coordinates and their roles.
+- Direct vs. transitive role is shown when the SBOM input supports it (not yet confirmed whether the chosen SBOM source/format carries this distinction — see Open Questions).
 
 ## Timeline acknowledgment
 
-Acknowledged on 2026-10-10: 6-week MVP requires sustained dedication; user accepted.
+Acknowledged on 2026-10-15: 12-week MVP (targeting the 2027-01-10 submission date) requires sustained dedication; user accepted.
 
 ## Open Questions
 
-1. How should instance-level taxonomy and admin category corrections reconcile with the shared central knowledge base in v2? — Owner: user.
+1. **Does the chosen SBOM format/source carry the direct-vs-transitive dependency role?** — Owner: user. Affects whether the direct/transitive guardrail can be met as stated.
+
+## Functional Requirements
+
+### Catalog & categorization (Admin)
+- FR-001: Admin can upload an SBOM and trigger the library categorization process. Priority: must-have
+  > Socrates: No counter-argument; stands as written.
+- FR-002: Admin can trigger the categorization process by providing a CSV list of purls, as an alternative to uploading an SBOM. Priority: must-have
+  > Socrates: No counter-argument; stands as written.
+- FR-003: Admin can view the list of categorized libraries and filter it. Priority: must-have
+  > Socrates: No counter-argument; stands as written — needed to verify what the automated categorization produced.
+- FR-004: Admin can add their own categories to a library. Priority: must-have
+  > Socrates: No counter-argument; stands as written — needed when automated categorization (GitHub tags / LLM) is wrong.
+
+### Organization analysis (Architect)
+- FR-005: Architect can upload a project's SBOM and receive a report of all its libraries by category, with direct dependencies highlighted, optionally showing health metrics, and showing whether a library is the organization's marked strategic choice for its category. Priority: must-have
+  > Socrates: No counter-argument; stands as written.
+- FR-006: Architect can view the organization's library list, filterable by strategic/standard status, with direct dependencies emphasized. Priority: must-have
+  > Socrates: No counter-argument; stands as written — needed to assess the organization as a whole, not just one project.
+- FR-007: Architect can mark a direct library within a category as strategic, scoped per technology/ecosystem (e.g. one strategic choice for Maven/Java, a separate one for npm/JS, since no single library spans both). Normally one strategic library per category per ecosystem, but up to two are allowed. Direct libraries in a category/ecosystem not marked strategic are implicitly candidates to retire. Priority: must-have
+  > Socrates: Counter-argument considered: what happens when no library is marked strategic in a category with multiple direct libraries? Resolution: no counter-argument against the FR itself; the category simply has no strategic library yet — the system does not force a choice.
+- FR-008: User can view a single project and see which of its direct dependencies are non-strategic (i.e. candidates to retire for that project). Priority: must-have
+  > Socrates: No counter-argument; stands as written — this is the concrete per-team action: what to fix in my project.
+
+## User Stories
+
+### US-01: Architect sees library redundancy in a project
+
+- **Given** a logged-in architect, a classification base already seeded (FR-001–FR-004), and the organization's strategic libraries marked per category/ecosystem (FR-007)
+- **When** the architect uploads a project's SBOM
+- **Then** they get a category report with direct dependencies flagged, each marked strategic/non-strategic, and non-strategic direct libraries clearly flagged as candidates to retire (FR-005, FR-008)
+
+#### Acceptance Criteria
+- A non-strategic direct library in a category is clearly flagged as a candidate to retire.
+
+## Business Logic
+
+For each library, Shelfmark determines a capability classification from its GitHub repository data, with an LLM making the final categorization decision.
+
+Input: a purl (package URL) identifying the library. Output: for each purl, one or more capability categories drawn from a curated taxonomy. The admin encounters this rule when seeding the classification base (FR-001, FR-002) and when reviewing or correcting its output (FR-003, FR-004).
+
+Sourcing detail (cascading): 1) the system looks up the library's GitHub repository and pulls its topic tags as a first-pass categorization; 2) an LLM is asked whether that categorization is correct, and adds or corrects categories where it is not; 3) where neither source yields a confident category, the admin enters one manually (a direct database entry is sufficient for the MVP — no dedicated UI required for this fallback path).
+
+## Non-Functional Requirements
+
+- Shelfmark classifies and reports on libraries from the Java/Maven ecosystem; Java/Maven support is must-have for the MVP.
+- Python ecosystem support is a nice-to-have for the MVP — it may slip past the MVP without harming the primary flow.
+
+## Non-Goals
+
+- No ecosystems other than Java/Maven (and optionally Python) — npm, Go, Ruby, .NET and others are out of MVP scope.
+- No SBOM generation and no CVE scanning — Shelfmark consumes SBOMs produced by existing tools and answers "what is redundant", not "what is vulnerable".
+- No automatic standard enforcement (CI integration, PR blocking) — Shelfmark recommends strategic libraries; it does not block.
+- No central knowledge base shared across organizations — the MVP is a single organization instance; a shared knowledge base, if ever built, is a future consideration.
 
 ## Quality cross-check
 
-All required items present (Access Control, Business Logic, Project artifacts, Timeline-cost acknowledgment, Non-Goals). Weaker items raised and resolved at the user's request: Secondary success criterion, LLM vs data-residency, data volume, account provisioning/SSO.
-
-## Forward: tech-stack
-
-- Deployment model stated in the seed: on-premise instance per customer; future cloud version without application changes.
-- SBOM inputs come from existing SBOM generation tools; the accepted SBOM format(s) are to be settled at stack selection.
+All required items present: Access Control, Business Logic (one-sentence rule), Project artifacts, Timeline-cost acknowledgment, Non-Goals. No gaps.
