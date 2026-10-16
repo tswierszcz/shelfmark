@@ -1,0 +1,50 @@
+package auth
+
+import (
+	"context"
+	"net/http"
+)
+
+// sessionContextKey is an unexported type to avoid collisions with context
+// keys defined in other packages.
+type sessionContextKey struct{}
+
+// SessionFromContext returns the Session attached to ctx by RequireRole, and
+// whether one was present.
+func SessionFromContext(ctx context.Context) (Session, bool) {
+	session, ok := ctx.Value(sessionContextKey{}).(Session)
+	return session, ok
+}
+
+// RequireRole returns a decorator that only runs the wrapped handler when the
+// caller's session is valid and its role is one of allowed. It responds with
+// 401 when the session is missing, malformed, or expired, and 403 when the
+// session is valid but its role is not permitted. On success, the verified
+// Session is attached to the request context for the wrapped handler to read
+// via SessionFromContext.
+func RequireRole(allowed ...Role) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			session, err := VerifySession(r)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			permitted := false
+			for _, role := range allowed {
+				if session.Role == role {
+					permitted = true
+					break
+				}
+			}
+			if !permitted {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), sessionContextKey{}, session)
+			next(w, r.WithContext(ctx))
+		}
+	}
+}

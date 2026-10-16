@@ -24,6 +24,7 @@ func main() {
 	})
 	mux.HandleFunc("POST /api/login", auth.LoginHandler(accounts))
 	mux.HandleFunc("POST /api/logout", auth.LogoutHandler())
+	mux.HandleFunc("GET /api/me", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(auth.MeHandler()))
 	mux.Handle("GET /", spaHandler(staticDir))
 
 	log.Printf("listening on %s, serving SPA from %s", addr, staticDir)

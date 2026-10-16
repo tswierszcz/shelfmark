@@ -21,6 +21,11 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
+type meResponse struct {
+	Email string `json:"email"`
+	Role  Role   `json:"role"`
+}
+
 // LoginHandler returns a handler for POST /api/login: it verifies the
 // submitted credentials against accounts and, on success, issues a session
 // cookie and returns the account's email and role as JSON.
@@ -60,6 +65,22 @@ func LogoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ClearSession(w)
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// MeHandler returns a handler for GET /api/me: it reports the email and role
+// of the caller's verified session. It is expected to be wrapped with
+// RequireRole so a Session is always present in the request context.
+func MeHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := SessionFromContext(r.Context())
+		if !ok {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(meResponse{Email: session.Email, Role: session.Role})
 	}
 }
 

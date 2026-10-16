@@ -261,27 +261,27 @@ Not applicable — no existing accounts or sessions to migrate from.
 
 #### Automated
 
-- [x] 1.1 go build ./... succeeds in backend/
-- [x] 1.2 go vet ./... succeeds in backend/
-- [x] 1.3 Unit tests pass: go test ./backend/internal/auth/...
+- [x] 1.1 go build ./... succeeds in backend/ — d5d3636
+- [x] 1.2 go vet ./... succeeds in backend/ — d5d3636
+- [x] 1.3 Unit tests pass: go test ./backend/internal/auth/... — d5d3636
 
 #### Manual
 
-- [x] 1.4 POST /api/login with valid credentials returns Set-Cookie and 200 with email/role
-- [x] 1.5 Reusing the session cookie is accepted on a follow-up request
-- [x] 1.6 POST /api/logout clears the session
+- [x] 1.4 POST /api/login with valid credentials returns Set-Cookie and 200 with email/role — d5d3636
+- [x] 1.5 Reusing the session cookie is accepted on a follow-up request — d5d3636
+- [x] 1.6 POST /api/logout clears the session — d5d3636
 
 ### Phase 2: Backend role gating
 
 #### Automated
 
-- [ ] 2.1 go build ./... succeeds in backend/
-- [ ] 2.2 Unit tests pass: go test ./backend/internal/auth/...
+- [x] 2.1 go build ./... succeeds in backend/
+- [x] 2.2 Unit tests pass: go test ./backend/internal/auth/...
 
 #### Manual
 
-- [ ] 2.3 GET /api/me with a valid Admin session returns 200 with email/role
-- [ ] 2.4 GET /api/me with no cookie returns 401
+- [x] 2.3 GET /api/me with a valid Admin session returns 200 with email/role
+- [x] 2.4 GET /api/me with no cookie returns 401
 
 ### Phase 3: Frontend auth
 
