@@ -275,24 +275,24 @@ Not applicable — no existing accounts or sessions to migrate from.
 
 #### Automated
 
-- [x] 2.1 go build ./... succeeds in backend/
-- [x] 2.2 Unit tests pass: go test ./backend/internal/auth/...
+- [x] 2.1 go build ./... succeeds in backend/ — cd6dae2
+- [x] 2.2 Unit tests pass: go test ./backend/internal/auth/... — cd6dae2
 
 #### Manual
 
-- [x] 2.3 GET /api/me with a valid Admin session returns 200 with email/role
-- [x] 2.4 GET /api/me with no cookie returns 401
+- [x] 2.3 GET /api/me with a valid Admin session returns 200 with email/role — cd6dae2
+- [x] 2.4 GET /api/me with no cookie returns 401 — cd6dae2
 
 ### Phase 3: Frontend auth
 
 #### Automated
 
-- [ ] 3.1 npm run typecheck succeeds in web/
-- [ ] 3.2 npm run build succeeds in web/
+- [x] 3.1 npm run typecheck succeeds in web/
+- [x] 3.2 npm run build succeeds in web/
 
 #### Manual
 
-- [ ] 3.3 Visiting /dashboard while logged out redirects to /login
-- [ ] 3.4 Logging in with each of the three role accounts shows the correct email/role on /dashboard
-- [ ] 3.5 Logout returns the user to a logged-out state
-- [ ] 3.6 An invalid login attempt shows an error and stays on /login
+- [x] 3.3 Visiting /dashboard while logged out redirects to /login
+- [x] 3.4 Logging in with each of the three role accounts shows the correct email/role on /dashboard
+- [x] 3.5 Logout returns the user to a logged-out state
+- [x] 3.6 An invalid login attempt shows an error and stays on /login
