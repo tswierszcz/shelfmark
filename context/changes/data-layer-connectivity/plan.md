@@ -242,9 +242,9 @@ Not applicable — no existing data to migrate; this establishes the migration m
 
 #### Automated
 
-- [x] 3.1 docker compose config succeeds, or is reported as a PREFLIGHT skip if Docker Compose is unavailable
+- [x] 3.1 docker compose config succeeds, or is reported as a PREFLIGHT skip if Docker Compose is unavailable — 7a807c5
 
 #### Manual
 
-- [x] 3.2 docker compose up -d starts a working local Postgres
-- [x] 3.3 Data persists across a docker compose down / up cycle (named volume works)
+- [x] 3.2 docker compose up -d starts a working local Postgres — 7a807c5
+- [x] 3.3 Data persists across a docker compose down / up cycle (named volume works) — 7a807c5
