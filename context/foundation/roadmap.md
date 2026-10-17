@@ -41,7 +41,7 @@ In organizations with dozens to hundreds of repositories, managing dependencies 
 | ---- | ------------------------------ | ------------------------------------------------------------------------------ | -------------- | ------------------------------- | -------- |
 | F-01 | minimal-auth-role-scaffold     | (foundation) users log in and actions are gated by role                       | —              | Access Control section          | done     |
 | F-02 | data-layer-connectivity        | (foundation) the app can persist and migrate structured data                  | —              | FR-001, FR-002                  | done     |
-| S-01 | seed-classification-catalog    | Admin can seed and categorize the library catalog                             | F-01, F-02     | FR-001, FR-002, FR-003, FR-004  | in-progress |
+| S-01 | seed-classification-catalog    | Admin can seed and categorize the library catalog                             | F-01, F-02     | FR-001, FR-002, FR-003, FR-004  | done     |
 | S-02 | mark-strategic-libraries       | Architect can view the org's libraries and mark a direct library as strategic | S-01, F-01     | FR-006, FR-007                  | proposed |
 | S-03 | project-redundancy-report      | Architect can upload a project's SBOM and see a redundancy report             | S-01, S-02, F-01 | FR-005, FR-008, US-01          | proposed |
 
@@ -107,7 +107,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Does the team already have access/credentials for the code-hosting lookup and the categorization service the classification mechanism depends on? — Owner: user. Block: no (can be arranged alongside early implementation, not before planning starts).
 - **Risk:** Must come first — nothing downstream has any data to show without a seeded, categorized catalog. This is also where the categorization mechanism (the most novel part of the product) gets proven out in isolation, before anything else depends on it.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-02: Architect marks strategic libraries
 
@@ -166,3 +166,4 @@ This table is the clean handoff to Jira/Linear or any MCP-backed backlog.
 
 - **F-01: (foundation) users log in and actions are gated by role** — Archived 2026-10-16 → `context/archive/2026-10-16-minimal-auth-role-scaffold/`. Lesson: —.
 - **F-02: (foundation) the app can persist and migrate structured data** — Archived 2026-10-16 → `context/archive/2026-10-16-data-layer-connectivity/`. Lesson: —.
+- **S-01: Admin can populate the library catalog (by purl list or SBOM) and have each library automatically categorized by capability, with manual review and correction available.** — Archived 2026-10-17 → `context/archive/2026-10-16-seed-classification-catalog/`. Lesson: —.
