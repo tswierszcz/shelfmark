@@ -42,7 +42,7 @@ In organizations with dozens to hundreds of repositories, managing dependencies 
 | F-01 | minimal-auth-role-scaffold     | (foundation) users log in and actions are gated by role                       | —              | Access Control section          | done     |
 | F-02 | data-layer-connectivity        | (foundation) the app can persist and migrate structured data                  | —              | FR-001, FR-002                  | done     |
 | S-01 | seed-classification-catalog    | Admin can seed and categorize the library catalog                             | F-01, F-02     | FR-001, FR-002, FR-003, FR-004  | done     |
-| S-02 | mark-strategic-libraries       | Architect can view the org's libraries and mark a direct library as strategic | S-01, F-01     | FR-006, FR-007                  | in-progress |
+| S-02 | mark-strategic-libraries       | Architect can view the org's libraries and mark a direct library as strategic | S-01, F-01     | FR-006, FR-007                  | done |
 | S-03 | project-redundancy-report      | Architect can upload a project's SBOM and see a redundancy report             | S-01, S-02, F-01 | FR-005, FR-008, US-01          | proposed |
 
 ## Streams
@@ -119,7 +119,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Strategic marking must exist before the redundancy report (S-03) can distinguish strategic from non-strategic libraries; building the report first would mean faking this state.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-03: Architect sees library redundancy in a project
 
@@ -167,3 +167,4 @@ This table is the clean handoff to Jira/Linear or any MCP-backed backlog.
 - **F-01: (foundation) users log in and actions are gated by role** — Archived 2026-10-16 → `context/archive/2026-10-16-minimal-auth-role-scaffold/`. Lesson: —.
 - **F-02: (foundation) the app can persist and migrate structured data** — Archived 2026-10-16 → `context/archive/2026-10-16-data-layer-connectivity/`. Lesson: —.
 - **S-01: Admin can populate the library catalog (by purl list or SBOM) and have each library automatically categorized by capability, with manual review and correction available.** — Archived 2026-10-17 → `context/archive/2026-10-16-seed-classification-catalog/`. Lesson: —.
+- **S-02: Architect can view the organization's library list and mark a direct library within a category as strategic (scoped per ecosystem).** — Archived 2026-10-18 → `context/archive/2026-10-17-mark-strategic-libraries/`. Lesson: —.

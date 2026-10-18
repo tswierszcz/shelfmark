@@ -1,10 +1,10 @@
 ---
 change_id: mark-strategic-libraries
 title: Architect marks strategic libraries
-status: impl_reviewed
+status: archived
 created: 2026-10-17
 updated: 2026-10-18
-archived_at: null
+archived_at: 2026-10-18T21:11:55Z
 ---
 
 ## Notes
