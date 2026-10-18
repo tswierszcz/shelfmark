@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/tswierszcz/shelfmark/backend/internal/auth"
 )
 
 const handlerFixtureSBOM = `{
@@ -375,5 +377,242 @@ func TestAttachCategoryHandler_AttachesAndRejectsMalformedBody(t *testing.T) {
 	}
 	if len(categoryNames[libs[0].ID]) != 1 || categoryNames[libs[0].ID][0] != categories[0].Name {
 		t.Fatalf("expected attached category %q, got %+v", categories[0].Name, categoryNames[libs[0].ID])
+	}
+}
+
+// sessionCookie issues a signed session cookie for role via auth.IssueSession,
+// following auth/middleware_test.go's issueTestSession pattern, so handler
+// tests can exercise auth.RequireRole-wrapped routes without a real login.
+func sessionCookie(t *testing.T, email string, role auth.Role) *http.Cookie {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if err := auth.IssueSession(rec, req, email, role); err != nil {
+		t.Fatalf("IssueSession: %v", err)
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatalf("IssueSession did not set a cookie")
+	}
+	return cookies[0]
+}
+
+// setUpLibraryWithCategory uploads the fixture SBOM and returns one created
+// library plus one seeded category, for tests that need a (library,
+// category) pair to mark strategic.
+func setUpLibraryWithCategory(t *testing.T, store *Store) (Library, Category) {
+	t.Helper()
+
+	queue := &recordingEnqueuer{}
+	uploadHandler := UploadHandler(store, queue)
+	req := newMultipartUploadRequest(t, "sbom", "sbom.json", []byte(handlerFixtureSBOM))
+	rec := httptest.NewRecorder()
+	uploadHandler(rec, req)
+
+	var uploadResp uploadResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &uploadResp); err != nil {
+		t.Fatalf("failed to decode upload response: %v", err)
+	}
+
+	ctx := context.Background()
+	libs, err := store.ListLibraries(ctx, LibraryFilter{BatchID: uploadResp.BatchID})
+	if err != nil || len(libs) == 0 {
+		t.Fatalf("expected at least one library, err=%v libs=%+v", err, libs)
+	}
+
+	categories, err := store.ListTaxonomy(ctx)
+	if err != nil || len(categories) == 0 {
+		t.Fatalf("expected at least one category, err=%v categories=%+v", err, categories)
+	}
+
+	return libs[0], categories[0]
+}
+
+func TestListOrganizationLibrariesHandler_ReflectsStrategicMarks(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	lib, category := setUpLibraryWithCategory(t, store)
+
+	ctx := context.Background()
+	if err := store.MarkStrategic(ctx, lib.ID, category.ID, "core dependency", "architect@example.com"); err != nil {
+		t.Fatalf("MarkStrategic failed: %v", err)
+	}
+
+	handler := ListOrganizationLibrariesHandler(store)
+
+	// Unfiltered: the marked library carries its strategic mark.
+	req := httptest.NewRequest(http.MethodGet, "/api/organization/libraries", nil)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp []libraryResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	byID := map[string]libraryResponse{}
+	for _, r := range resp {
+		byID[r.ID] = r
+	}
+	marked, ok := byID[lib.ID]
+	if !ok {
+		t.Fatalf("expected library %s in response, got %+v", lib.ID, resp)
+	}
+	if len(marked.Strategic) != 1 || marked.Strategic[0].CategoryID != category.ID || marked.Strategic[0].Justification != "core dependency" {
+		t.Fatalf("expected one strategic mark for library %s, got %+v", lib.ID, marked.Strategic)
+	}
+
+	// strategic=true filters down to only the marked library.
+	filterReq := httptest.NewRequest(http.MethodGet, "/api/organization/libraries?strategic=true", nil)
+	filterRec := httptest.NewRecorder()
+	handler(filterRec, filterReq)
+
+	var filtered []libraryResponse
+	if err := json.Unmarshal(filterRec.Body.Bytes(), &filtered); err != nil {
+		t.Fatalf("failed to decode filtered response: %v", err)
+	}
+	if len(filtered) != 1 || filtered[0].ID != lib.ID {
+		t.Fatalf("expected only library %s with strategic=true, got %+v", lib.ID, filtered)
+	}
+
+	// strategic=false excludes the marked library.
+	excludeReq := httptest.NewRequest(http.MethodGet, "/api/organization/libraries?strategic=false", nil)
+	excludeRec := httptest.NewRecorder()
+	handler(excludeRec, excludeReq)
+
+	var excluded []libraryResponse
+	if err := json.Unmarshal(excludeRec.Body.Bytes(), &excluded); err != nil {
+		t.Fatalf("failed to decode excluded response: %v", err)
+	}
+	for _, l := range excluded {
+		if l.ID == lib.ID {
+			t.Fatalf("expected library %s to be excluded with strategic=false, got %+v", lib.ID, excluded)
+		}
+	}
+}
+
+func TestMarkAndUnmarkStrategicHandler_RoundTrip(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	lib, category := setUpLibraryWithCategory(t, store)
+
+	t.Setenv("SESSION_SECRET", "test-secret")
+	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+
+	markHandler := auth.RequireRole(auth.RoleArchitect)(MarkStrategicHandler(store))
+	unmarkHandler := auth.RequireRole(auth.RoleArchitect)(UnmarkStrategicHandler(store))
+
+	path := "/api/organization/libraries/" + lib.ID + "/categories/" + category.ID + "/strategic"
+
+	// Blank justification is rejected.
+	badReq := httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(`{"justification":"  "}`)))
+	badReq.SetPathValue("libraryID", lib.ID)
+	badReq.SetPathValue("categoryID", category.ID)
+	badReq.AddCookie(cookie)
+	badRec := httptest.NewRecorder()
+	markHandler(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for blank justification, got %d: %s", badRec.Code, badRec.Body.String())
+	}
+
+	// Valid mark returns 204 and is reflected in the store.
+	markReq := httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(`{"justification":"core dependency"}`)))
+	markReq.SetPathValue("libraryID", lib.ID)
+	markReq.SetPathValue("categoryID", category.ID)
+	markReq.AddCookie(cookie)
+	markRec := httptest.NewRecorder()
+	markHandler(markRec, markReq)
+	if markRec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", markRec.Code, markRec.Body.String())
+	}
+
+	ctx := context.Background()
+	marks, err := store.StrategicMarksByLibrary(ctx, []string{lib.ID})
+	if err != nil {
+		t.Fatalf("StrategicMarksByLibrary failed: %v", err)
+	}
+	if len(marks[lib.ID]) != 1 || marks[lib.ID][0].MarkedBy != "architect@example.com" {
+		t.Fatalf("expected one strategic mark attributed to architect@example.com, got %+v", marks[lib.ID])
+	}
+
+	// Unmark returns 204 and deactivates the mark.
+	unmarkReq := httptest.NewRequest(http.MethodDelete, path, bytes.NewReader([]byte(`{"justification":"no longer strategic"}`)))
+	unmarkReq.SetPathValue("libraryID", lib.ID)
+	unmarkReq.SetPathValue("categoryID", category.ID)
+	unmarkReq.AddCookie(cookie)
+	unmarkRec := httptest.NewRecorder()
+	unmarkHandler(unmarkRec, unmarkReq)
+	if unmarkRec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", unmarkRec.Code, unmarkRec.Body.String())
+	}
+
+	marksAfter, err := store.StrategicMarksByLibrary(ctx, []string{lib.ID})
+	if err != nil {
+		t.Fatalf("StrategicMarksByLibrary failed: %v", err)
+	}
+	if len(marksAfter[lib.ID]) != 0 {
+		t.Fatalf("expected no active strategic marks after unmark, got %+v", marksAfter[lib.ID])
+	}
+
+	// Unmarking an already-inactive pair returns 404.
+	repeatReq := httptest.NewRequest(http.MethodDelete, path, bytes.NewReader([]byte(`{"justification":"still not strategic"}`)))
+	repeatReq.SetPathValue("libraryID", lib.ID)
+	repeatReq.SetPathValue("categoryID", category.ID)
+	repeatReq.AddCookie(cookie)
+	repeatRec := httptest.NewRecorder()
+	unmarkHandler(repeatRec, repeatReq)
+	if repeatRec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for repeat unmark, got %d: %s", repeatRec.Code, repeatRec.Body.String())
+	}
+}
+
+func TestMarkStrategicHandler_RoleGating(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	lib, category := setUpLibraryWithCategory(t, store)
+
+	t.Setenv("SESSION_SECRET", "test-secret")
+
+	markHandler := auth.RequireRole(auth.RoleArchitect)(MarkStrategicHandler(store))
+	path := "/api/organization/libraries/" + lib.ID + "/categories/" + category.ID + "/strategic"
+	body := []byte(`{"justification":"core dependency"}`)
+
+	// A Viewer session is rejected with 403.
+	viewerCookie := sessionCookie(t, "viewer@example.com", auth.RoleViewer)
+	viewerReq := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	viewerReq.SetPathValue("libraryID", lib.ID)
+	viewerReq.SetPathValue("categoryID", category.ID)
+	viewerReq.AddCookie(viewerCookie)
+	viewerRec := httptest.NewRecorder()
+	markHandler(viewerRec, viewerReq)
+	if viewerRec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for viewer, got %d: %s", viewerRec.Code, viewerRec.Body.String())
+	}
+
+	// No session at all is rejected with 401.
+	noSessionReq := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	noSessionReq.SetPathValue("libraryID", lib.ID)
+	noSessionReq.SetPathValue("categoryID", category.ID)
+	noSessionRec := httptest.NewRecorder()
+	markHandler(noSessionRec, noSessionReq)
+	if noSessionRec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 with no session, got %d: %s", noSessionRec.Code, noSessionRec.Body.String())
+	}
+
+	// Confirm the mark was never actually recorded by either rejected call.
+	ctx := context.Background()
+	marks, err := store.StrategicMarksByLibrary(ctx, []string{lib.ID})
+	if err != nil {
+		t.Fatalf("StrategicMarksByLibrary failed: %v", err)
+	}
+	if len(marks[lib.ID]) != 0 {
+		t.Fatalf("expected no strategic marks after rejected requests, got %+v", marks[lib.ID])
 	}
 }

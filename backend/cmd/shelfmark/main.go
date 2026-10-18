@@ -47,8 +47,11 @@ func main() {
 	mux.HandleFunc("POST /api/catalog/upload", auth.RequireRole(auth.RoleAdmin)(catalog.UploadHandler(catalogStore, catalogQueue)))
 	mux.HandleFunc("GET /api/catalog/batches/{batchID}", auth.RequireRole(auth.RoleAdmin)(catalog.BatchProgressHandler(catalogStore)))
 	mux.HandleFunc("GET /api/catalog/libraries", auth.RequireRole(auth.RoleAdmin)(catalog.ListLibrariesHandler(catalogStore)))
-	mux.HandleFunc("GET /api/catalog/categories", auth.RequireRole(auth.RoleAdmin)(catalog.ListTaxonomyHandler(catalogStore)))
+	mux.HandleFunc("GET /api/catalog/categories", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(catalog.ListTaxonomyHandler(catalogStore)))
 	mux.HandleFunc("POST /api/catalog/libraries/{libraryID}/categories", auth.RequireRole(auth.RoleAdmin)(catalog.AttachCategoryHandler(catalogStore)))
+	mux.HandleFunc("GET /api/organization/libraries", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ListOrganizationLibrariesHandler(catalogStore)))
+	mux.HandleFunc("POST /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", auth.RequireRole(auth.RoleArchitect)(catalog.MarkStrategicHandler(catalogStore)))
+	mux.HandleFunc("DELETE /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", auth.RequireRole(auth.RoleArchitect)(catalog.UnmarkStrategicHandler(catalogStore)))
 	mux.Handle("GET /", spaHandler(staticDir))
 
 	log.Printf("listening on %s, serving SPA from %s", addr, staticDir)

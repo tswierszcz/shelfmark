@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/tswierszcz/shelfmark/backend/internal/auth"
 )
 
 // Enqueuer accepts a library for background categorization processing. The
@@ -136,7 +139,8 @@ func BatchProgressHandler(store *Store) http.HandlerFunc {
 // "which libraries are uncategorized" without N follow-up requests.
 type libraryResponse struct {
 	Library
-	Categories []string `json:"categories"`
+	Categories []string        `json:"categories"`
+	Strategic  []StrategicMark `json:"strategic"`
 }
 
 // ListLibrariesHandler returns a handler for GET /api/catalog/libraries: it
@@ -173,7 +177,75 @@ func ListLibrariesHandler(store *Store) http.HandlerFunc {
 			if names == nil {
 				names = []string{}
 			}
-			resp[i] = libraryResponse{Library: l, Categories: names}
+			resp[i] = libraryResponse{Library: l, Categories: names, Strategic: []StrategicMark{}}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}
+}
+
+// ListOrganizationLibrariesHandler returns a handler for GET
+// /api/organization/libraries: it lists libraries matching the same
+// status/category/ecosystem filters as ListLibrariesHandler, plus an
+// optional "strategic" filter ("true"/"false"; absent means no filter), each
+// annotated with its attached category names and its active strategic
+// marks.
+func ListOrganizationLibrariesHandler(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		filter := LibraryFilter{
+			Status:    r.URL.Query().Get("status"),
+			Category:  r.URL.Query().Get("category"),
+			Ecosystem: r.URL.Query().Get("ecosystem"),
+		}
+
+		switch strategicParam := r.URL.Query().Get("strategic"); strategicParam {
+		case "":
+			// No filter.
+		case "true":
+			v := true
+			filter.Strategic = &v
+		case "false":
+			v := false
+			filter.Strategic = &v
+		default:
+			writeCatalogError(w, http.StatusBadRequest, `strategic must be "true" or "false"`)
+			return
+		}
+
+		ctx := r.Context()
+		libraries, err := store.ListLibraries(ctx, filter)
+		if err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to list libraries")
+			return
+		}
+
+		ids := make([]string, len(libraries))
+		for i, l := range libraries {
+			ids[i] = l.ID
+		}
+		categoryNames, err := store.CategoryNamesByLibrary(ctx, ids)
+		if err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to list library categories")
+			return
+		}
+		strategicMarks, err := store.StrategicMarksByLibrary(ctx, ids)
+		if err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to list strategic marks")
+			return
+		}
+
+		resp := make([]libraryResponse, len(libraries))
+		for i, l := range libraries {
+			names := categoryNames[l.ID]
+			if names == nil {
+				names = []string{}
+			}
+			marks := strategicMarks[l.ID]
+			if marks == nil {
+				marks = []StrategicMark{}
+			}
+			resp[i] = libraryResponse{Library: l, Categories: names, Strategic: marks}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -217,6 +289,71 @@ func AttachCategoryHandler(store *Store) http.HandlerFunc {
 
 		if err := store.AttachCategory(r.Context(), libraryID, req.CategoryID, "manual"); err != nil {
 			writeCatalogError(w, http.StatusInternalServerError, "failed to attach category")
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type strategicMarkRequest struct {
+	Justification string `json:"justification"`
+}
+
+// MarkStrategicHandler returns a handler for POST
+// /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic:
+// it records the library as a strategic choice within the category, with
+// the acting Architect's session email as the attribution ("marked_by").
+func MarkStrategicHandler(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		libraryID := r.PathValue("libraryID")
+		categoryID := r.PathValue("categoryID")
+
+		var req strategicMarkRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Justification) == "" {
+			writeCatalogError(w, http.StatusBadRequest, "missing or blank justification")
+			return
+		}
+
+		session, _ := auth.SessionFromContext(r.Context())
+
+		if err := store.MarkStrategic(r.Context(), libraryID, categoryID, req.Justification, session.Email); err != nil {
+			writeCatalogError(w, http.StatusInternalServerError, "failed to mark strategic")
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// UnmarkStrategicHandler returns a handler for DELETE
+// /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic:
+// it deactivates an existing strategic mark for the (library, category)
+// pair, recording the reason and the acting Architect via the same body
+// contract as MarkStrategicHandler. It responds 404 when the pair is not
+// currently marked strategic.
+func UnmarkStrategicHandler(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		libraryID := r.PathValue("libraryID")
+		categoryID := r.PathValue("categoryID")
+
+		var req strategicMarkRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Justification) == "" {
+			writeCatalogError(w, http.StatusBadRequest, "missing or blank justification")
+			return
+		}
+
+		session, _ := auth.SessionFromContext(r.Context())
+
+		if err := store.UnmarkStrategic(r.Context(), libraryID, categoryID, req.Justification, session.Email); err != nil {
+			// ADAPT: UnmarkStrategic has no exported not-found sentinel error;
+			// its not-found case is detected by message text here so the HTTP
+			// layer can return 404 rather than a blanket 500.
+			if strings.Contains(err.Error(), "no active strategic mark found") {
+				writeCatalogError(w, http.StatusNotFound, "no active strategic mark found for this library and category")
+				return
+			}
+			writeCatalogError(w, http.StatusInternalServerError, "failed to unmark strategic")
 			return
 		}
 

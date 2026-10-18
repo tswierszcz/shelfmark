@@ -270,15 +270,15 @@ Add the `/organization` page for Architect (full access) and Viewer (read-only),
 
 #### Automated
 
-- [x] 2.1 `go test ./internal/catalog/...` passes
-- [x] 2.2 `go vet ./...` passes
+- [x] 2.1 `go test ./internal/catalog/...` passes — bf57e29
+- [x] 2.2 `go vet ./...` passes — bf57e29
 
 ### Phase 3: HTTP handlers and routing
 
 #### Automated
 
-- [ ] 3.1 `go test ./internal/catalog/... ./cmd/...` passes
-- [ ] 3.2 `go build ./...` succeeds
+- [x] 3.1 `go test ./internal/catalog/... ./cmd/...` passes
+- [x] 3.2 `go build ./...` succeeds
 
 #### Manual
 
