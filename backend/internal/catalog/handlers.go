@@ -3,6 +3,7 @@ package catalog
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -315,9 +316,17 @@ func MarkStrategicHandler(store *Store) http.HandlerFunc {
 			return
 		}
 
-		session, _ := auth.SessionFromContext(r.Context())
+		session, ok := auth.SessionFromContext(r.Context())
+		if !ok {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 
 		if err := store.MarkStrategic(r.Context(), libraryID, categoryID, req.Justification, session.Email); err != nil {
+			if errors.Is(err, ErrInvalidReference) {
+				writeCatalogError(w, http.StatusBadRequest, "library or category does not exist")
+				return
+			}
 			writeCatalogError(w, http.StatusInternalServerError, "failed to mark strategic")
 			return
 		}
@@ -343,13 +352,14 @@ func UnmarkStrategicHandler(store *Store) http.HandlerFunc {
 			return
 		}
 
-		session, _ := auth.SessionFromContext(r.Context())
+		session, ok := auth.SessionFromContext(r.Context())
+		if !ok {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 
 		if err := store.UnmarkStrategic(r.Context(), libraryID, categoryID, req.Justification, session.Email); err != nil {
-			// ADAPT: UnmarkStrategic has no exported not-found sentinel error;
-			// its not-found case is detected by message text here so the HTTP
-			// layer can return 404 rather than a blanket 500.
-			if strings.Contains(err.Error(), "no active strategic mark found") {
+			if errors.Is(err, ErrStrategicMarkNotFound) {
 				writeCatalogError(w, http.StatusNotFound, "no active strategic mark found for this library and category")
 				return
 			}

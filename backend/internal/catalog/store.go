@@ -6,11 +6,23 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// ErrStrategicMarkNotFound indicates the (library, category) pair targeted
+// by UnmarkStrategic has no active strategic mark to deactivate.
+var ErrStrategicMarkNotFound = errors.New("catalog: no active strategic mark found")
+
+// ErrInvalidReference indicates MarkStrategic was called with a libraryID or
+// categoryID that doesn't exist, surfaced by strategic_marks' foreign key
+// constraints.
+var ErrInvalidReference = errors.New("catalog: library or category does not exist")
 
 // Category is one entry in the curated taxonomy seeded by migration
 // 0002_catalog_schema.
@@ -318,6 +330,10 @@ func (s *Store) MarkStrategic(ctx context.Context, libraryID, categoryID, justif
 		libraryID, categoryID, justification, markedBy,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
+			return fmt.Errorf("catalog: library %q or category %q does not exist: %w", libraryID, categoryID, ErrInvalidReference)
+		}
 		return fmt.Errorf("catalog: failed to mark strategic: %w", err)
 	}
 
@@ -340,7 +356,7 @@ func (s *Store) UnmarkStrategic(ctx context.Context, libraryID, categoryID, just
 		return fmt.Errorf("catalog: failed to unmark strategic: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("catalog: no active strategic mark found for library %q, category %q", libraryID, categoryID)
+		return fmt.Errorf("catalog: no active strategic mark found for library %q, category %q: %w", libraryID, categoryID, ErrStrategicMarkNotFound)
 	}
 
 	return nil

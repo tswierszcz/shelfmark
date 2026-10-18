@@ -570,6 +570,18 @@ func TestMarkAndUnmarkStrategicHandler_RoundTrip(t *testing.T) {
 	if repeatRec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for repeat unmark, got %d: %s", repeatRec.Code, repeatRec.Body.String())
 	}
+
+	// Marking a non-existent library/category pair returns 400, not 500.
+	badRefPath := "/api/organization/libraries/00000000-0000-0000-0000-000000000000/categories/00000000-0000-0000-0000-000000000000/strategic"
+	badRefReq := httptest.NewRequest(http.MethodPost, badRefPath, bytes.NewReader([]byte(`{"justification":"core dependency"}`)))
+	badRefReq.SetPathValue("libraryID", "00000000-0000-0000-0000-000000000000")
+	badRefReq.SetPathValue("categoryID", "00000000-0000-0000-0000-000000000000")
+	badRefReq.AddCookie(cookie)
+	badRefRec := httptest.NewRecorder()
+	markHandler(badRefRec, badRefReq)
+	if badRefRec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for non-existent library/category, got %d: %s", badRefRec.Code, badRefRec.Body.String())
+	}
 }
 
 func TestMarkStrategicHandler_RoleGating(t *testing.T) {
