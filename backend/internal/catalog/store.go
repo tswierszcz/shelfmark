@@ -36,15 +36,28 @@ type Library struct {
 	GithubRepo    *string `json:"github_repo"`
 	Status        string  `json:"status"`
 	UploadBatchID string  `json:"upload_batch_id"`
+	IsDirect      bool    `json:"is_direct"`
 }
 
 // LibraryFilter narrows ListLibraries. Every field is optional (zero value
-// means "don't filter on this").
+// means "don't filter on this"). Strategic is a tri-state: nil means "don't
+// filter on strategic status", true/false means "has/has-not at least one
+// active strategic_marks row".
 type LibraryFilter struct {
 	Status    string
 	Category  string
 	Ecosystem string
 	BatchID   string
+	Strategic *bool
+}
+
+// StrategicMark is one active strategic designation of a library against a
+// category, as returned by StrategicMarksByLibrary.
+type StrategicMark struct {
+	CategoryID    string `json:"category_id"`
+	CategoryName  string `json:"category_name"`
+	Justification string `json:"justification"`
+	MarkedBy      string `json:"marked_by"`
 }
 
 // BatchProgress holds the count of libraries in each status for one upload
@@ -120,7 +133,7 @@ func (s *Store) ListTaxonomy(ctx context.Context) ([]Category, error) {
 // ListLibraries returns libraries matching filter. Every filter field is
 // optional; an empty filter returns every library.
 func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Library, error) {
-	query := `SELECT DISTINCT l.id, l.purl, l.name, l.ecosystem, l.github_repo, l.status, l.upload_batch_id
+	query := `SELECT DISTINCT l.id, l.purl, l.name, l.ecosystem, l.github_repo, l.status, l.upload_batch_id, l.is_direct
 	          FROM libraries l`
 	var (
 		conditions []string
@@ -145,6 +158,14 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 		args = append(args, filter.BatchID)
 		conditions = append(conditions, fmt.Sprintf("l.upload_batch_id = $%d", len(args)))
 	}
+	if filter.Strategic != nil {
+		existsSubquery := `EXISTS (SELECT 1 FROM strategic_marks sm WHERE sm.library_id = l.id AND sm.active)`
+		if *filter.Strategic {
+			conditions = append(conditions, existsSubquery)
+		} else {
+			conditions = append(conditions, "NOT "+existsSubquery)
+		}
+	}
 
 	for i, cond := range conditions {
 		if i == 0 {
@@ -164,7 +185,7 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 	var libraries []Library
 	for rows.Next() {
 		var l Library
-		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID); err != nil {
+		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID, &l.IsDirect); err != nil {
 			return nil, fmt.Errorf("catalog: failed to scan library: %w", err)
 		}
 		libraries = append(libraries, l)
@@ -283,4 +304,84 @@ func (s *Store) BatchProgress(ctx context.Context, batchID string) (BatchProgres
 	}
 
 	return progress, nil
+}
+
+// MarkStrategic upserts an active strategic designation of libraryID against
+// categoryID, overwriting the recorded justification/markedBy/markedAt on a
+// repeat call rather than erroring, following AttachCategory's upsert idiom.
+func (s *Store) MarkStrategic(ctx context.Context, libraryID, categoryID, justification, markedBy string) error {
+	_, err := s.pool.Exec(ctx,
+		`INSERT INTO strategic_marks (library_id, category_id, active, justification, marked_by)
+		 VALUES ($1, $2, true, $3, $4)
+		 ON CONFLICT (library_id, category_id) DO UPDATE
+		 SET active = true, justification = EXCLUDED.justification, marked_by = EXCLUDED.marked_by, marked_at = now()`,
+		libraryID, categoryID, justification, markedBy,
+	)
+	if err != nil {
+		return fmt.Errorf("catalog: failed to mark strategic: %w", err)
+	}
+
+	return nil
+}
+
+// UnmarkStrategic deactivates an existing active strategic designation of
+// libraryID against categoryID, recording the reason via justification and
+// markedBy. It returns an error if the (library, category) pair is not
+// currently marked strategic, matching UpdateLibraryStatus's not-found
+// convention.
+func (s *Store) UnmarkStrategic(ctx context.Context, libraryID, categoryID, justification, markedBy string) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE strategic_marks
+		 SET active = false, justification = $3, marked_by = $4, marked_at = now()
+		 WHERE library_id = $1 AND category_id = $2 AND active = true`,
+		libraryID, categoryID, justification, markedBy,
+	)
+	if err != nil {
+		return fmt.Errorf("catalog: failed to unmark strategic: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("catalog: no active strategic mark found for library %q, category %q", libraryID, categoryID)
+	}
+
+	return nil
+}
+
+// StrategicMarksByLibrary returns the active strategic marks for each
+// library in libraryIDs, keyed by library ID. A library with no active marks
+// is simply absent from the returned map (callers should treat a missing key
+// the same as an empty slice), mirroring CategoryNamesByLibrary's contract.
+func (s *Store) StrategicMarksByLibrary(ctx context.Context, libraryIDs []string) (map[string][]StrategicMark, error) {
+	result := map[string][]StrategicMark{}
+	if len(libraryIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := s.pool.Query(ctx,
+		`SELECT sm.library_id, sm.category_id, c.name, sm.justification, sm.marked_by
+		 FROM strategic_marks sm
+		 JOIN categories c ON c.id = sm.category_id
+		 WHERE sm.active AND sm.library_id::text = ANY($1)
+		 ORDER BY c.name`,
+		libraryIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: failed to list strategic marks by library: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			libraryID string
+			mark      StrategicMark
+		)
+		if err := rows.Scan(&libraryID, &mark.CategoryID, &mark.CategoryName, &mark.Justification, &mark.MarkedBy); err != nil {
+			return nil, fmt.Errorf("catalog: failed to scan strategic mark: %w", err)
+		}
+		result[libraryID] = append(result[libraryID], mark)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("catalog: failed to list strategic marks by library: %w", err)
+	}
+
+	return result, nil
 }

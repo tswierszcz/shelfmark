@@ -263,15 +263,15 @@ Add the `/organization` page for Architect (full access) and Viewer (read-only),
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly
-- [x] 1.2 Full migration round-trip (up then down) succeeds
+- [x] 1.1 Migration applies cleanly — bcb3eb0
+- [x] 1.2 Full migration round-trip (up then down) succeeds — bcb3eb0
 
 ### Phase 2: Store layer
 
 #### Automated
 
-- [ ] 2.1 `go test ./internal/catalog/...` passes
-- [ ] 2.2 `go vet ./...` passes
+- [x] 2.1 `go test ./internal/catalog/...` passes
+- [x] 2.2 `go vet ./...` passes
 
 ### Phase 3: HTTP handlers and routing
 
