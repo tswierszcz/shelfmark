@@ -3,7 +3,7 @@ project: "Shelfmark"
 version: 1
 status: draft
 created: 2026-10-15
-updated: 2026-10-16
+updated: 2026-10-18
 prd_version: 1
 main_goal: speed
 top_blocker: time
@@ -42,7 +42,7 @@ In organizations with dozens to hundreds of repositories, managing dependencies 
 | F-01 | minimal-auth-role-scaffold     | (foundation) users log in and actions are gated by role                       | —              | Access Control section          | done     |
 | F-02 | data-layer-connectivity        | (foundation) the app can persist and migrate structured data                  | —              | FR-001, FR-002                  | done     |
 | S-01 | seed-classification-catalog    | Admin can seed and categorize the library catalog                             | F-01, F-02     | FR-001, FR-002, FR-003, FR-004  | done     |
-| S-02 | mark-strategic-libraries       | Architect can view the org's libraries and mark a direct library as strategic | S-01, F-01     | FR-006, FR-007                  | proposed |
+| S-02 | mark-strategic-libraries       | Architect can view the org's libraries and mark a direct library as strategic | S-01, F-01     | FR-006, FR-007                  | in-progress |
 | S-03 | project-redundancy-report      | Architect can upload a project's SBOM and see a redundancy report             | S-01, S-02, F-01 | FR-005, FR-008, US-01          | proposed |
 
 ## Streams
@@ -119,7 +119,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Strategic marking must exist before the redundancy report (S-03) can distinguish strategic from non-strategic libraries; building the report first would mean faking this state.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-03: Architect sees library redundancy in a project
 
