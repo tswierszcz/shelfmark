@@ -282,17 +282,17 @@ Add the `/organization` page for Architect (full access) and Viewer (read-only),
 
 #### Manual
 
-- [x] 3.3 Architect/Viewer role gating verified via curl
+- [x] 3.3 Architect/Viewer role gating verified via curl — 5841eef
 
 ### Phase 4: Frontend
 
 #### Automated
 
-- [x] 4.1 `npm run typecheck` passes
-- [x] 4.2 `npm run build` passes
+- [x] 4.1 `npm run typecheck` passes — 5841eef
+- [x] 4.2 `npm run build` passes — 5841eef
 
 #### Manual
 
-- [x] 4.3 Architect mark/unmark flow verified in browser
-- [x] 4.4 Viewer read-only access verified in browser
-- [x] 4.5 Admin redirect-away verified in browser
+- [x] 4.3 Architect mark/unmark flow verified in browser — 5841eef
+- [x] 4.4 Viewer read-only access verified in browser — 5841eef
+- [x] 4.5 Admin redirect-away verified in browser — 5841eef
