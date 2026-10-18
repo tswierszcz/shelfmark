@@ -277,22 +277,22 @@ Add the `/organization` page for Architect (full access) and Viewer (read-only),
 
 #### Automated
 
-- [x] 3.1 `go test ./internal/catalog/... ./cmd/...` passes
-- [x] 3.2 `go build ./...` succeeds
+- [x] 3.1 `go test ./internal/catalog/... ./cmd/...` passes — 68080a1
+- [x] 3.2 `go build ./...` succeeds — 68080a1
 
 #### Manual
 
-- [ ] 3.3 Architect/Viewer role gating verified via curl
+- [x] 3.3 Architect/Viewer role gating verified via curl
 
 ### Phase 4: Frontend
 
 #### Automated
 
-- [ ] 4.1 `npm run typecheck` passes
-- [ ] 4.2 `npm run build` passes
+- [x] 4.1 `npm run typecheck` passes
+- [x] 4.2 `npm run build` passes
 
 #### Manual
 
-- [ ] 4.3 Architect mark/unmark flow verified in browser
-- [ ] 4.4 Viewer read-only access verified in browser
-- [ ] 4.5 Admin redirect-away verified in browser
+- [x] 4.3 Architect mark/unmark flow verified in browser
+- [x] 4.4 Viewer read-only access verified in browser
+- [x] 4.5 Admin redirect-away verified in browser

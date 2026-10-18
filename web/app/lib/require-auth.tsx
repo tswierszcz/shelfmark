@@ -3,17 +3,23 @@ import { useNavigate } from "react-router";
 
 import { useAuth } from "./auth";
 
+type Role = "admin" | "architect" | "viewer";
+
 export function RequireAuth({
   children,
   role,
 }: {
   children: ReactNode;
-  role?: "admin" | "architect" | "viewer";
+  role?: Role | Role[];
 }) {
   const { me, loading } = useAuth();
   const navigate = useNavigate();
 
-  const wrongRole = !loading && !!me && role !== undefined && me.role !== role;
+  const wrongRole =
+    !loading &&
+    !!me &&
+    role !== undefined &&
+    (Array.isArray(role) ? !role.includes(me.role) : me.role !== role);
 
   useEffect(() => {
     if (!loading && !me) {
