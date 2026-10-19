@@ -314,25 +314,25 @@ Additive only — new tables, no changes to existing `libraries`/`categories`/`s
 
 #### Automated
 
-- [x] 3.1 Unit tests pass
-- [x] 3.2 go vet passes
+- [x] 3.1 Unit tests pass — 9eac9e7
+- [x] 3.2 go vet passes — 9eac9e7
 
 #### Manual
 
-- [x] 3.3 Upload as Architect succeeds and report reflects uploaded components
-- [x] 3.4 Upload as Viewer rejected with 403; view as Viewer succeeds
-- [x] 3.5 Re-upload with same project name updates existing project
+- [x] 3.3 Upload as Architect succeeds and report reflects uploaded components — 9eac9e7
+- [x] 3.4 Upload as Viewer rejected with 403; view as Viewer succeeds — 9eac9e7
+- [x] 3.5 Re-upload with same project name updates existing project — 9eac9e7
 
 ### Phase 4: Frontend — redundancy report page
 
 #### Automated
 
-- [ ] 4.1 Type checking passes
-- [ ] 4.2 Build succeeds
+- [x] 4.1 Type checking passes
+- [x] 4.2 Build succeeds
 
 #### Manual
 
-- [ ] 4.3 Architect upload → settle → report populates correctly
-- [ ] 4.4 Re-upload same project name reflects only new contents
-- [ ] 4.5 Viewer sees picker and table, no upload form
-- [ ] 4.6 Logged-out user redirected to /login
+- [x] 4.3 Architect upload → settle → report populates correctly
+- [x] 4.4 Re-upload same project name reflects only new contents
+- [x] 4.5 Viewer sees picker and table, no upload form
+- [x] 4.6 Logged-out user redirected to /login
