@@ -52,6 +52,9 @@ func main() {
 	mux.HandleFunc("GET /api/organization/libraries", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ListOrganizationLibrariesHandler(catalogStore)))
 	mux.HandleFunc("POST /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", auth.RequireRole(auth.RoleArchitect)(catalog.MarkStrategicHandler(catalogStore)))
 	mux.HandleFunc("DELETE /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", auth.RequireRole(auth.RoleArchitect)(catalog.UnmarkStrategicHandler(catalogStore)))
+	mux.HandleFunc("POST /api/projects/upload", auth.RequireRole(auth.RoleArchitect)(catalog.ProjectUploadHandler(catalogStore, catalogQueue)))
+	mux.HandleFunc("GET /api/projects", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ListProjectsHandler(catalogStore)))
+	mux.HandleFunc("GET /api/projects/{projectID}/report", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ProjectReportHandler(catalogStore)))
 	mux.Handle("GET /", spaHandler(staticDir))
 
 	log.Printf("listening on %s, serving SPA from %s", addr, staticDir)

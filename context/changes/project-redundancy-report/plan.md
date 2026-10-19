@@ -307,21 +307,21 @@ Additive only — new tables, no changes to existing `libraries`/`categories`/`s
 
 #### Automated
 
-- [x] 2.1 Unit tests pass
-- [x] 2.2 go vet passes
+- [x] 2.1 Unit tests pass — 565e9c6
+- [x] 2.2 go vet passes — 565e9c6
 
 ### Phase 3: Project upload & report endpoints
 
 #### Automated
 
-- [ ] 3.1 Unit tests pass
-- [ ] 3.2 go vet passes
+- [x] 3.1 Unit tests pass
+- [x] 3.2 go vet passes
 
 #### Manual
 
-- [ ] 3.3 Upload as Architect succeeds and report reflects uploaded components
-- [ ] 3.4 Upload as Viewer rejected with 403; view as Viewer succeeds
-- [ ] 3.5 Re-upload with same project name updates existing project
+- [x] 3.3 Upload as Architect succeeds and report reflects uploaded components
+- [x] 3.4 Upload as Viewer rejected with 403; view as Viewer succeeds
+- [x] 3.5 Re-upload with same project name updates existing project
 
 ### Phase 4: Frontend — redundancy report page
 

@@ -141,6 +141,22 @@ func (s *Store) ReplaceProjectLibraries(ctx context.Context, projectID string, e
 	return nil
 }
 
+// projectExists reports whether a project with the given ID exists, letting
+// ProjectReportHandler distinguish a nonexistent project (404) from one that
+// exists but has no recorded libraries yet (200 with an empty report).
+func (s *Store) projectExists(ctx context.Context, projectID string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM projects WHERE id = $1)`,
+		projectID,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("catalog: failed to check project existence: %w", err)
+	}
+
+	return exists, nil
+}
+
 // ListProjects returns every project, most recently updated first, for the
 // frontend's project picker.
 func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
