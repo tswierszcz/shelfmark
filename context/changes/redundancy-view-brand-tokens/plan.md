@@ -292,22 +292,22 @@ Not applicable — no data model or API changes.
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `cd web && npm run typecheck`
+- [x] 3.1 Type checking passes: `cd web && npm run typecheck` — 294e9eb
 
 #### Manual
 
-- [x] 3.2 Throttled reload of `/redundancy` shows themed "Loading…" instead of a blank flash
+- [x] 3.2 Throttled reload of `/redundancy` shows themed "Loading…" instead of a blank flash — 294e9eb
 
 ### Phase 4: States & visual gate
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `cd web && npm run typecheck`
-- [ ] 4.2 Build succeeds: `cd web && npm run build`
-- [ ] 4.3 Hardcoded-value scan on `redundancy.tsx` still returns 0 hits
+- [x] 4.1 Type checking passes: `cd web && npm run typecheck`
+- [x] 4.2 Build succeeds: `cd web && npm run build`
+- [x] 4.3 Hardcoded-value scan on `redundancy.tsx` still returns 0 hits
 
 #### Manual
 
-- [ ] 4.4 `/dev/kitchen-sink-redundancy` shows all 7 states, clearly labeled and distinguishable
-- [ ] 4.5 Desktop + one mobile-width screenshots taken of both `/redundancy` and the kitchen sink
-- [ ] 4.6 `CLAUDE.md` addition renders correctly, outside the CLI-managed block
+- [x] 4.4 `/dev/kitchen-sink-redundancy` shows all 7 states, clearly labeled and distinguishable
+- [ ] 4.5 Desktop + one mobile-width screenshots taken of both `/redundancy` and the kitchen sink (skipped by user decision — live review in this session substituted)
+- [x] 4.6 `CLAUDE.md` addition renders correctly, outside the CLI-managed block

@@ -52,3 +52,10 @@ Przekształć jeden element roadmapy w pierwszy cykl implementacji za pomocą **
 Umiejętności nie mogą zapisywać do `context/archive/`. Zarchiwizowane zmiany są niezmienne; jeśli rozstrzygnięta ścieżka docelowa zaczyna się od `context/archive/`, przerwij z komunikatem: "This change is archived. Open a new change with `/10x-new` instead."
 
 <!-- END @przeprogramowani/10x-cli -->
+
+## Brand tokens & shared components
+
+- Design tokens live in `web/app/app.css` inside the `@theme` block: `--color-bg`, `--color-bg-soft`, `--color-ink`, `--color-ink-dim`, `--color-ink-faint`, `--color-accent`, `--color-rule`, `--color-destructive` (plus `--font-serif`). Tailwind v4 auto-publishes these as utility classes (e.g. `bg-accent`, `text-ink-faint`, `border-rule`, `bg-accent/15`).
+- Shared components live in `web/app/components/` (`Logo`, `Button`, `Badge`). Check this directory before building a new one — extend an existing component's prop contract rather than duplicating it.
+- Route files must not use literal Tailwind palette colors (e.g. `gray-*`, `red-*`, `amber-*`) or arbitrary hex/rgb values — use the tokens above instead.
+- A living reference of the tokenized states (default, hover, focus-visible, disabled, error, empty, loading) is kept at `/dev/kitchen-sink-redundancy`.

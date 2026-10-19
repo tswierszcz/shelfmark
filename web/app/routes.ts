@@ -7,4 +7,5 @@ export default [
   route("catalog", "routes/catalog.tsx"),
   route("organization", "routes/organization.tsx"),
   route("redundancy", "routes/redundancy.tsx"),
+  route("dev/kitchen-sink-redundancy", "routes/dev.kitchen-sink-redundancy.tsx"),
 ] satisfies RouteConfig;
