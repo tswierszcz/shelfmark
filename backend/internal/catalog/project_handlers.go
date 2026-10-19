@@ -25,6 +25,12 @@ type projectUploadResponse struct {
 // (direct/transitive) with the SBOM's current contents.
 func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		session, ok := auth.SessionFromContext(r.Context())
+		if !ok {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
 		projectName := strings.TrimSpace(r.FormValue("project_name"))
 		if projectName == "" {
 			writeCatalogError(w, http.StatusBadRequest, "missing project_name")
@@ -75,12 +81,6 @@ func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 			if lib.Status == "pending" {
 				queue.Enqueue(lib)
 			}
-		}
-
-		session, ok := auth.SessionFromContext(ctx)
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
 		}
 
 		project, err := store.FindOrCreateProject(ctx, projectName, session.Email)
