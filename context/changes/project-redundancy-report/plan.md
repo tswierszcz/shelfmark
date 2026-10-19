@@ -299,16 +299,16 @@ Additive only — new tables, no changes to existing `libraries`/`categories`/`s
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly
-- [x] 1.2 Unit tests pass
-- [x] 1.3 go vet passes
+- [x] 1.1 Migration applies cleanly — d8b6f2d
+- [x] 1.2 Unit tests pass — d8b6f2d
+- [x] 1.3 go vet passes — d8b6f2d
 
 ### Phase 2: SBOM dependency-graph parsing
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass
-- [ ] 2.2 go vet passes
+- [x] 2.1 Unit tests pass
+- [x] 2.2 go vet passes
 
 ### Phase 3: Project upload & report endpoints
 
