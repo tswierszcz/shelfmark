@@ -22,8 +22,8 @@ node_modules/
 # Bootstrapper temp directory
 /.bootstrap-scaffold/
 
-# Local Claude Code settings
-.claude/settings.local.json
+# Local Claude Code settings and course skill downloads (not published)
+.claude/
 
 # Editors and OS
 .idea/
