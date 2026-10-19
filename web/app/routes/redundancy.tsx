@@ -11,6 +11,9 @@ import {
 } from "../lib/projects";
 import { useAuth } from "../lib/auth";
 import { RequireAuth } from "../lib/require-auth";
+import { Logo } from "../components/logo";
+import { Button } from "../components/button";
+import { Badge } from "../components/badge";
 
 const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
 const POLL_INTERVAL_MS = 2000;
@@ -67,7 +70,7 @@ function RedundancyContent() {
     try {
       setReportError(null);
       const result = await getProjectReport(projectId);
-      setReport(result);
+      setReport(result ?? []);
     } catch (err) {
       setReportError(err instanceof Error ? err.message : "Failed to load report.");
     }
@@ -157,11 +160,12 @@ function RedundancyContent() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-xl font-semibold">Redundancy report</h1>
+      <Logo className="mb-6" />
+      <h1 className="text-xl font-semibold font-serif">Redundancy report</h1>
 
       {isArchitect && (
-        <section className="mt-6 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-          <h2 className="text-lg font-medium">Upload project SBOM</h2>
+        <section className="mt-6 rounded-lg border border-rule bg-bg-soft p-4">
+          <h2 className="text-lg font-semibold font-serif">Upload project SBOM</h2>
           <form onSubmit={handleUpload} className="mt-3 flex flex-wrap items-end gap-3">
             <div className="space-y-1">
               <label htmlFor="project-name" className="block text-sm font-medium">
@@ -174,7 +178,7 @@ function RedundancyContent() {
                 value={projectName}
                 onChange={(event) => setProjectName(event.target.value)}
                 placeholder="my-service"
-                className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+                className="border border-rule bg-bg-soft text-ink text-sm rounded px-3 py-2"
               />
             </div>
 
@@ -191,18 +195,12 @@ function RedundancyContent() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={uploading || !file || !projectName.trim()}
-              className="rounded bg-gray-900 px-3 py-2 text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
-            >
+            <Button type="submit" disabled={uploading || !file || !projectName.trim()}>
               {uploading ? "Uploading…" : "Upload"}
-            </button>
+            </Button>
           </form>
 
-          {uploadError && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>
-          )}
+          {uploadError && <p className="mt-2 text-destructive text-sm">{uploadError}</p>}
 
           {batchId && (
             <div className="mt-4 text-sm">
@@ -213,7 +211,7 @@ function RedundancyContent() {
               {batchProgress && (
                 <ul className="mt-1 flex flex-wrap gap-3">
                   {Object.entries(batchProgress).map(([status, count]) => (
-                    <li key={status} className="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">
+                    <li key={status} className="rounded border border-rule px-2 py-1">
                       {status}: {count}
                     </li>
                   ))}
@@ -224,8 +222,8 @@ function RedundancyContent() {
         </section>
       )}
 
-      <section className="mt-6 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-        <h2 className="text-lg font-medium">Report</h2>
+      <section className="mt-6 rounded-lg border border-rule bg-bg-soft p-4">
+        <h2 className="text-lg font-semibold font-serif">Report</h2>
 
         <div className="mt-3 space-y-1">
           <label htmlFor="project-picker" className="block text-sm font-medium">
@@ -235,7 +233,7 @@ function RedundancyContent() {
             id="project-picker"
             value={selectedProjectId}
             onChange={(event) => handleSelectProject(event.target.value)}
-            className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            className="border border-rule bg-bg-soft text-ink text-sm rounded px-3 py-2"
           >
             <option value="">Select a project…</option>
             {projects.map((project) => (
@@ -246,18 +244,14 @@ function RedundancyContent() {
           </select>
         </div>
 
-        {projectsError && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{projectsError}</p>
-        )}
-        {reportError && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{reportError}</p>
-        )}
+        {projectsError && <p className="mt-2 text-destructive text-sm">{projectsError}</p>}
+        {reportError && <p className="mt-2 text-destructive text-sm">{reportError}</p>}
 
         {selectedProjectId && (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800">
+                <tr className="border-b border-rule">
                   <th className="py-2 pr-4">Purl</th>
                   <th className="py-2 pr-4">Direct</th>
                   <th className="py-2 pr-4">GitHub repo</th>
@@ -272,7 +266,7 @@ function RedundancyContent() {
                   );
 
                   return (
-                    <tr key={library.id} className="border-b border-gray-100 dark:border-gray-900">
+                    <tr key={library.id} className="border-b border-rule/50">
                       <td className="py-2 pr-4 font-mono">{library.purl}</td>
                       <td className="py-2 pr-4">{library.is_direct ? "Yes" : "No"}</td>
                       <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
@@ -287,15 +281,9 @@ function RedundancyContent() {
                                 className="flex flex-wrap items-center gap-2"
                               >
                                 <span>{category.category_name}</span>
-                                {category.strategic && (
-                                  <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-900 dark:text-amber-100">
-                                    Strategic
-                                  </span>
-                                )}
+                                {category.strategic && <Badge tone="accent">Strategic</Badge>}
                                 {category.retire_candidate && (
-                                  <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-900 dark:bg-red-900 dark:text-red-100">
-                                    Retire candidate
-                                  </span>
+                                  <Badge tone="destructive">Retire candidate</Badge>
                                 )}
                               </li>
                             ))}
@@ -304,7 +292,7 @@ function RedundancyContent() {
                       </td>
                       <td className="py-2 pr-4">
                         {retireCandidate ? (
-                          <span className="text-red-600 dark:text-red-400">Retire?</span>
+                          <span className="text-destructive">Retire?</span>
                         ) : (
                           "—"
                         )}
@@ -314,7 +302,7 @@ function RedundancyContent() {
                 })}
                 {report.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-4 text-center text-gray-500">
+                    <td colSpan={5} className="py-4 text-center text-ink-faint">
                       No libraries recorded for this project.
                     </td>
                   </tr>

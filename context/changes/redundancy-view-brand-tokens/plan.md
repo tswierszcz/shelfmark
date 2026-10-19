@@ -266,27 +266,27 @@ Not applicable — no data model or API changes.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `cd web && npm run typecheck`
-- [x] 1.2 Build succeeds: `cd web && npm run build`
+- [x] 1.1 Type checking passes: `cd web && npm run typecheck` — 245ac12
+- [x] 1.2 Build succeeds: `cd web && npm run build` — 245ac12
 
 #### Manual
 
-- [x] 1.3 Any existing route shows dark `#14110f` background, no font-loading errors
-- [x] 1.4 Fraunces font request succeeds (no 404)
+- [x] 1.3 Any existing route shows dark `#14110f` background, no font-loading errors — 245ac12
+- [x] 1.4 Fraunces font request succeeds (no 404) — 245ac12
 
 ### Phase 2: redundancy.tsx view + shared components
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `cd web && npm run typecheck`
-- [ ] 2.2 Build succeeds: `cd web && npm run build`
-- [ ] 2.3 Hardcoded-value scan on `redundancy.tsx` returns 0 hits
+- [x] 2.1 Type checking passes: `cd web && npm run typecheck`
+- [x] 2.2 Build succeeds: `cd web && npm run build`
+- [x] 2.3 Hardcoded-value scan on `redundancy.tsx` returns 0 hits
 
 #### Manual
 
-- [ ] 2.4 `/redundancy` visually matches the brand (dark bg, gold CTA, Fraunces headings, logo visible)
-- [ ] 2.5 Upload form and project-report table function end-to-end
-- [ ] 2.6 "Strategic" and "Retire candidate" badges are visually distinct and legible
+- [x] 2.4 `/redundancy` visually matches the brand (dark bg, gold CTA, Fraunces headings, logo visible)
+- [x] 2.5 Upload form and project-report table function end-to-end
+- [x] 2.6 "Strategic" and "Retire candidate" badges are visually distinct and legible
 
 ### Phase 3: require-auth.tsx loading state
 
