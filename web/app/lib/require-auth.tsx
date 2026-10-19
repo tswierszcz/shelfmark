@@ -32,7 +32,11 @@ export function RequireAuth({
   }, [loading, me, navigate, wrongRole]);
 
   if (loading) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg text-ink-faint text-sm">
+        Loading…
+      </div>
+    );
   }
 
   if (!me || wrongRole) {

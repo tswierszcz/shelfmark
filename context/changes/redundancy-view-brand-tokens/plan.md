@@ -278,25 +278,25 @@ Not applicable — no data model or API changes.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `cd web && npm run typecheck`
-- [x] 2.2 Build succeeds: `cd web && npm run build`
-- [x] 2.3 Hardcoded-value scan on `redundancy.tsx` returns 0 hits
+- [x] 2.1 Type checking passes: `cd web && npm run typecheck` — dcc7013
+- [x] 2.2 Build succeeds: `cd web && npm run build` — dcc7013
+- [x] 2.3 Hardcoded-value scan on `redundancy.tsx` returns 0 hits — dcc7013
 
 #### Manual
 
-- [x] 2.4 `/redundancy` visually matches the brand (dark bg, gold CTA, Fraunces headings, logo visible)
-- [x] 2.5 Upload form and project-report table function end-to-end
-- [x] 2.6 "Strategic" and "Retire candidate" badges are visually distinct and legible
+- [x] 2.4 `/redundancy` visually matches the brand (dark bg, gold CTA, Fraunces headings, logo visible) — dcc7013
+- [x] 2.5 Upload form and project-report table function end-to-end — dcc7013
+- [x] 2.6 "Strategic" and "Retire candidate" badges are visually distinct and legible — dcc7013
 
 ### Phase 3: require-auth.tsx loading state
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `cd web && npm run typecheck`
+- [x] 3.1 Type checking passes: `cd web && npm run typecheck`
 
 #### Manual
 
-- [ ] 3.2 Throttled reload of `/redundancy` shows themed "Loading…" instead of a blank flash
+- [x] 3.2 Throttled reload of `/redundancy` shows themed "Loading…" instead of a blank flash
 
 ### Phase 4: States & visual gate
 
