@@ -1,7 +1,7 @@
 ---
 change_id: redundancy-view-brand-tokens
 title: Introduce Shelfmark brand design tokens, applied to the redundancy report view
-status: implementing
+status: implemented
 created: 2026-10-19
 updated: 2026-10-19
 archived_at: null

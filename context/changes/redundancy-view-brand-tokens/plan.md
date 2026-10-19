@@ -302,12 +302,12 @@ Not applicable — no data model or API changes.
 
 #### Automated
 
-- [x] 4.1 Type checking passes: `cd web && npm run typecheck`
-- [x] 4.2 Build succeeds: `cd web && npm run build`
-- [x] 4.3 Hardcoded-value scan on `redundancy.tsx` still returns 0 hits
+- [x] 4.1 Type checking passes: `cd web && npm run typecheck` — bd685aa
+- [x] 4.2 Build succeeds: `cd web && npm run build` — bd685aa
+- [x] 4.3 Hardcoded-value scan on `redundancy.tsx` still returns 0 hits — bd685aa
 
 #### Manual
 
-- [x] 4.4 `/dev/kitchen-sink-redundancy` shows all 7 states, clearly labeled and distinguishable
+- [x] 4.4 `/dev/kitchen-sink-redundancy` shows all 7 states, clearly labeled and distinguishable — bd685aa
 - [ ] 4.5 Desktop + one mobile-width screenshots taken of both `/redundancy` and the kitchen sink (skipped by user decision — live review in this session substituted)
-- [x] 4.6 `CLAUDE.md` addition renders correctly, outside the CLI-managed block
+- [x] 4.6 `CLAUDE.md` addition renders correctly, outside the CLI-managed block — bd685aa
