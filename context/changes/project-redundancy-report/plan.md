@@ -327,12 +327,12 @@ Additive only — new tables, no changes to existing `libraries`/`categories`/`s
 
 #### Automated
 
-- [x] 4.1 Type checking passes
-- [x] 4.2 Build succeeds
+- [x] 4.1 Type checking passes — efc2261
+- [x] 4.2 Build succeeds — efc2261
 
 #### Manual
 
-- [x] 4.3 Architect upload → settle → report populates correctly
-- [x] 4.4 Re-upload same project name reflects only new contents
-- [x] 4.5 Viewer sees picker and table, no upload form
-- [x] 4.6 Logged-out user redirected to /login
+- [x] 4.3 Architect upload → settle → report populates correctly — efc2261
+- [x] 4.4 Re-upload same project name reflects only new contents — efc2261
+- [x] 4.5 Viewer sees picker and table, no upload form — efc2261
+- [x] 4.6 Logged-out user redirected to /login — efc2261
