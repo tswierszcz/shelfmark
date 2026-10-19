@@ -1,10 +1,10 @@
 ---
 change_id: project-redundancy-report
 title: Project redundancy report
-status: impl_reviewed
+status: archived
 created: 2026-10-19
 updated: 2026-10-19
-archived_at: null
+archived_at: 2026-10-19T14:23:19Z
 ---
 
 ## Notes
