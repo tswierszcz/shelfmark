@@ -45,6 +45,7 @@ function RedundancyContent() {
   const [reportError, setReportError] = useState<string | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollToken = useRef(0);
 
   async function refreshProjects() {
     try {
@@ -86,12 +87,21 @@ function RedundancyContent() {
   }, []);
 
   function startPolling(id: string, onSettled: () => void) {
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+
+    const token = ++pollToken.current;
     const startedAt = Date.now();
     setPolling(true);
 
     async function poll() {
       try {
         const progress = await getBatchProgress(id);
+        if (pollToken.current !== token) {
+          return;
+        }
         setBatchProgress(progress);
 
         const settled = isBatchSettled(progress);
@@ -105,6 +115,9 @@ function RedundancyContent() {
 
         pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
       } catch {
+        if (pollToken.current !== token) {
+          return;
+        }
         setPolling(false);
         onSettled();
       }
