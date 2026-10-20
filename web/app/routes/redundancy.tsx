@@ -11,7 +11,7 @@ import {
 } from "../lib/projects";
 import { useAuth } from "../lib/auth";
 import { RequireAuth } from "../lib/require-auth";
-import { Logo } from "../components/logo";
+import { Nav } from "../components/nav";
 import { Button } from "../components/button";
 import { Badge } from "../components/badge";
 
@@ -160,7 +160,7 @@ function RedundancyContent() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <Logo className="mb-6" />
+      <Nav />
       <h1 className="text-xl font-semibold font-serif">Redundancy report</h1>
 
       {isArchitect && (

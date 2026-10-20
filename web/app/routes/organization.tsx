@@ -11,6 +11,7 @@ import {
 import { RequireAuth } from "../lib/require-auth";
 import { Badge } from "../components/badge";
 import { Button } from "../components/button";
+import { Nav } from "../components/nav";
 
 function OrganizationContent() {
   const { me } = useAuth();
@@ -114,6 +115,7 @@ function OrganizationContent() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
+      <Nav />
       <h1 className="font-serif text-xl font-semibold">Organization</h1>
 
       <section className="mt-6 rounded-lg border border-rule bg-bg-soft p-4">

@@ -12,6 +12,7 @@ import {
 } from "../lib/catalog";
 import { RequireAuth } from "../lib/require-auth";
 import { Button } from "../components/button";
+import { Nav } from "../components/nav";
 
 const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
 const POLL_INTERVAL_MS = 2000;
@@ -153,6 +154,7 @@ function CatalogContent() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
+      <Nav />
       <h1 className="font-serif text-xl font-semibold">Catalog</h1>
 
       <section className="mt-6 rounded-lg border border-rule bg-bg-soft p-4">
