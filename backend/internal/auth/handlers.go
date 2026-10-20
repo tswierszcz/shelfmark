@@ -38,6 +38,8 @@ type createUserRequest struct {
 // cookie and returns the account's email and role as JSON.
 func LoginHandler(store *UsersStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<10)
+
 		var req loginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeInvalidCredentials(w)
@@ -102,6 +104,8 @@ func MeHandler() http.HandlerFunc {
 // email is already taken, and 204 on success.
 func CreateUserHandler(store *UsersStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<10)
+
 		var req createUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeUserError(w, http.StatusBadRequest, "invalid request body")

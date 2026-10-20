@@ -122,10 +122,23 @@ func (s *UsersStore) SeedFromEnvIfEmpty(ctx context.Context) error {
 		return fmt.Errorf("auth: failed to load accounts for seeding: %w", err)
 	}
 
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("auth: failed to begin seed transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	for email, account := range accounts {
-		if err := s.Create(ctx, email, account.PasswordHash, account.Role); err != nil {
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3)`,
+			email, account.PasswordHash, account.Role,
+		); err != nil {
 			return fmt.Errorf("auth: failed to seed account %q: %w", email, err)
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("auth: failed to commit seed transaction: %w", err)
 	}
 
 	return nil
