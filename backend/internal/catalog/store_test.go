@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os/exec"
@@ -311,6 +312,58 @@ func TestMarkStrategic_UpsertsWithoutErrorOnRepeat(t *testing.T) {
 	}
 	if got[0].CategoryID != categoryID || got[0].CategoryName != categories[0].Name {
 		t.Fatalf("expected category fields to match %q/%q, got %+v", categoryID, categories[0].Name, got[0])
+	}
+}
+
+func TestMarkStrategic_EnforcesTwoPerCategoryEcosystemCap(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	batchID := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+	libs := []NewLibrary{
+		{Purl: "pkg:maven/com.example/cap-one@1.0.0", Name: "cap-one", Ecosystem: "maven"},
+		{Purl: "pkg:maven/com.example/cap-two@1.0.0", Name: "cap-two", Ecosystem: "maven"},
+		{Purl: "pkg:maven/com.example/cap-three@1.0.0", Name: "cap-three", Ecosystem: "maven"},
+	}
+	if err := store.CreateLibraries(ctx, batchID, libs); err != nil {
+		t.Fatalf("CreateLibraries failed: %v", err)
+	}
+
+	listed, err := store.ListLibraries(ctx, LibraryFilter{BatchID: batchID})
+	if err != nil {
+		t.Fatalf("ListLibraries failed: %v", err)
+	}
+	byPurl := map[string]Library{}
+	for _, l := range listed {
+		byPurl[l.Purl] = l
+	}
+	libOne := byPurl["pkg:maven/com.example/cap-one@1.0.0"]
+	libTwo := byPurl["pkg:maven/com.example/cap-two@1.0.0"]
+	libThree := byPurl["pkg:maven/com.example/cap-three@1.0.0"]
+
+	categories, err := store.ListTaxonomy(ctx)
+	if err != nil {
+		t.Fatalf("ListTaxonomy failed: %v", err)
+	}
+	categoryID := categories[0].ID
+
+	if err := store.MarkStrategic(ctx, libOne.ID, categoryID, "critical dependency", "alice"); err != nil {
+		t.Fatalf("MarkStrategic(libOne) failed: %v", err)
+	}
+	if err := store.MarkStrategic(ctx, libTwo.ID, categoryID, "critical dependency", "alice"); err != nil {
+		t.Fatalf("MarkStrategic(libTwo) failed: %v", err)
+	}
+
+	// A 3rd distinct library in the same category+ecosystem must be rejected.
+	if err := store.MarkStrategic(ctx, libThree.ID, categoryID, "critical dependency", "alice"); !errors.Is(err, ErrStrategicCapReached) {
+		t.Fatalf("expected MarkStrategic(libThree) to return ErrStrategicCapReached, got %v", err)
+	}
+
+	// Re-marking (upserting) one of the original two must still succeed
+	// despite the cap being at 2.
+	if err := store.MarkStrategic(ctx, libOne.ID, categoryID, "re-confirmed critical dependency", "bob"); err != nil {
+		t.Fatalf("expected re-mark of libOne to succeed despite cap, got error: %v", err)
 	}
 }
 

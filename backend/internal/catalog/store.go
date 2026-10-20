@@ -24,6 +24,11 @@ var ErrStrategicMarkNotFound = errors.New("catalog: no active strategic mark fou
 // constraints.
 var ErrInvalidReference = errors.New("catalog: library or category does not exist")
 
+// ErrStrategicCapReached indicates MarkStrategic was called for a 3rd
+// distinct library within the same (category, ecosystem) pair, exceeding
+// FR-007's cap of two strategic libraries per category/ecosystem.
+var ErrStrategicCapReached = errors.New("catalog: strategic cap reached for this category and ecosystem")
+
 // Category is one entry in the curated taxonomy seeded by migration
 // 0002_catalog_schema.
 type Category struct {
@@ -145,7 +150,8 @@ func (s *Store) ListTaxonomy(ctx context.Context) ([]Category, error) {
 // ListLibraries returns libraries matching filter. Every filter field is
 // optional; an empty filter returns every library.
 func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Library, error) {
-	query := `SELECT DISTINCT l.id, l.purl, l.name, l.ecosystem, l.github_repo, l.status, l.upload_batch_id, l.is_direct
+	query := `SELECT DISTINCT l.id, l.purl, l.name, l.ecosystem, l.github_repo, l.status, l.upload_batch_id,
+	          EXISTS (SELECT 1 FROM project_libraries pl WHERE pl.library_id = l.id AND pl.is_direct) AS is_direct
 	          FROM libraries l`
 	var (
 		conditions []string
@@ -322,19 +328,50 @@ func (s *Store) BatchProgress(ctx context.Context, batchID string) (BatchProgres
 // categoryID, overwriting the recorded justification/markedBy/markedAt on a
 // repeat call rather than erroring, following AttachCategory's upsert idiom.
 func (s *Store) MarkStrategic(ctx context.Context, libraryID, categoryID, justification, markedBy string) error {
-	_, err := s.pool.Exec(ctx,
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("catalog: failed to begin mark strategic: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var ecosystem string
+	if err := tx.QueryRow(ctx, `SELECT ecosystem FROM libraries WHERE id = $1`, libraryID).Scan(&ecosystem); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("catalog: library %q or category %q does not exist: %w", libraryID, categoryID, ErrInvalidReference)
+		}
+		return fmt.Errorf("catalog: failed to look up library ecosystem: %w", err)
+	}
+
+	var count int
+	if err := tx.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT sm.library_id)
+		 FROM strategic_marks sm
+		 JOIN libraries l ON l.id = sm.library_id
+		 WHERE sm.active AND sm.category_id = $1 AND l.ecosystem = $2 AND sm.library_id != $3`,
+		categoryID, ecosystem, libraryID,
+	).Scan(&count); err != nil {
+		return fmt.Errorf("catalog: failed to count strategic marks: %w", err)
+	}
+	if count >= 2 {
+		return ErrStrategicCapReached
+	}
+
+	if _, err := tx.Exec(ctx,
 		`INSERT INTO strategic_marks (library_id, category_id, active, justification, marked_by)
 		 VALUES ($1, $2, true, $3, $4)
 		 ON CONFLICT (library_id, category_id) DO UPDATE
 		 SET active = true, justification = EXCLUDED.justification, marked_by = EXCLUDED.marked_by, marked_at = now()`,
 		libraryID, categoryID, justification, markedBy,
-	)
-	if err != nil {
+	); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
 			return fmt.Errorf("catalog: library %q or category %q does not exist: %w", libraryID, categoryID, ErrInvalidReference)
 		}
 		return fmt.Errorf("catalog: failed to mark strategic: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("catalog: failed to commit mark strategic: %w", err)
 	}
 
 	return nil

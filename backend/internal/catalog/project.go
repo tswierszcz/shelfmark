@@ -74,7 +74,7 @@ func (s *Store) LibrariesByPurls(ctx context.Context, purls []string) ([]Library
 	}
 
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, purl, name, ecosystem, github_repo, status, upload_batch_id, is_direct
+		`SELECT id, purl, name, ecosystem, github_repo, status, upload_batch_id
 		 FROM libraries
 		 WHERE purl = ANY($1)`,
 		purls,
@@ -87,7 +87,7 @@ func (s *Store) LibrariesByPurls(ctx context.Context, purls []string) ([]Library
 	var libraries []Library
 	for rows.Next() {
 		var l Library
-		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID, &l.IsDirect); err != nil {
+		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID); err != nil {
 			return nil, fmt.Errorf("catalog: failed to scan library: %w", err)
 		}
 		libraries = append(libraries, l)

@@ -327,6 +327,10 @@ func MarkStrategicHandler(store *Store) http.HandlerFunc {
 				writeCatalogError(w, http.StatusBadRequest, "library or category does not exist")
 				return
 			}
+			if errors.Is(err, ErrStrategicCapReached) {
+				writeCatalogError(w, http.StatusConflict, "already 2 strategic libraries marked for this category and ecosystem")
+				return
+			}
 			writeCatalogError(w, http.StatusInternalServerError, "failed to mark strategic")
 			return
 		}
