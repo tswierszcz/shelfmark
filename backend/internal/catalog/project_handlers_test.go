@@ -546,3 +546,50 @@ func TestListProjectsHandler_ReturnsUploadedProjects(t *testing.T) {
 		t.Fatalf("expected project %s in ListProjects response, got %+v", resp.ProjectID, projects)
 	}
 }
+
+func TestListProjectsHandler_NoProjectsReturnsEmptyArrayNotNull(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	handler := ListProjectsHandler(store)
+	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// A nil slice would marshal to the literal "null\n" instead, which a
+	// frontend .map() over the decoded response would crash on.
+	if rec.Body.String() != "[]\n" {
+		t.Fatalf("expected body %q, got %q", "[]\n", rec.Body.String())
+	}
+}
+
+func TestProjectReportHandler_NoLibrariesReturnsEmptyArrayNotNull(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	project, err := store.FindOrCreateProject(ctx, "Empty Project", "test@example.com")
+	if err != nil {
+		t.Fatalf("FindOrCreateProject failed: %v", err)
+	}
+
+	handler := ProjectReportHandler(store)
+	req := httptest.NewRequest(http.MethodGet, "/api/projects/"+project.ID+"/report", nil)
+	req.SetPathValue("projectID", project.ID)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// A nil slice would marshal to the literal "null\n" instead, which a
+	// frontend .map() over the decoded response would crash on.
+	if rec.Body.String() != "[]\n" {
+		t.Fatalf("expected body %q, got %q", "[]\n", rec.Body.String())
+	}
+}

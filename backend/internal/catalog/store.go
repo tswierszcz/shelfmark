@@ -132,7 +132,7 @@ func (s *Store) ListTaxonomy(ctx context.Context) ([]Category, error) {
 	}
 	defer rows.Close()
 
-	var categories []Category
+	categories := []Category{}
 	for rows.Next() {
 		var c Category
 		if err := rows.Scan(&c.ID, &c.Name); err != nil {

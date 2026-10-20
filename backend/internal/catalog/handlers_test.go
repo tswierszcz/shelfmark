@@ -239,6 +239,33 @@ func TestListTaxonomyHandler_ReturnsSeededCategories(t *testing.T) {
 	}
 }
 
+func TestListTaxonomyHandler_NoCategoriesReturnsEmptyArrayNotNull(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	// The categories table is otherwise always migration-seeded, so force
+	// the zero-row condition directly; this test's own throwaway container
+	// isolates the DELETE from every other test.
+	if _, err := pool.Exec(context.Background(), `DELETE FROM categories`); err != nil {
+		t.Fatalf("failed to clear categories: %v", err)
+	}
+
+	handler := ListTaxonomyHandler(store)
+	req := httptest.NewRequest(http.MethodGet, "/api/catalog/categories", nil)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// A nil slice would marshal to the literal "null\n" instead, which a
+	// frontend .map() over the decoded response would crash on.
+	if rec.Body.String() != "[]\n" {
+		t.Fatalf("expected body %q, got %q", "[]\n", rec.Body.String())
+	}
+}
+
 func TestListLibrariesHandler_FiltersAndIncludesCategories(t *testing.T) {
 	pool := startTestPostgres(t)
 	store := NewStore(pool)

@@ -78,7 +78,7 @@ func (s *UsersStore) List(ctx context.Context) ([]UserSummary, error) {
 	}
 	defer rows.Close()
 
-	var users []UserSummary
+	users := []UserSummary{}
 	for rows.Next() {
 		var u UserSummary
 		if err := rows.Scan(&u.Email, &u.Role); err != nil {

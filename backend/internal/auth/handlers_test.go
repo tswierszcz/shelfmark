@@ -218,3 +218,31 @@ func TestLogoutHandler_ClearsSession(t *testing.T) {
 		t.Errorf("expected MaxAge=-1, got %d", found.MaxAge)
 	}
 }
+
+func TestListUsersHandler_NoUsersReturnsEmptyArrayNotNull(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewUsersStore(pool)
+
+	// An admin account always exists in practice (seeded on first boot via
+	// SeedFromEnvIfEmpty), but the function itself shouldn't rely on that;
+	// force the zero-row condition directly. This test's own throwaway
+	// container isolates the DELETE from every other test.
+	if _, err := pool.Exec(context.Background(), `DELETE FROM users`); err != nil {
+		t.Fatalf("failed to clear users: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
+	rec := httptest.NewRecorder()
+
+	ListUsersHandler(store)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// A nil slice would marshal to the literal "null\n" instead, which a
+	// frontend .map() over the decoded response would crash on.
+	if rec.Body.String() != "[]\n" {
+		t.Fatalf("expected body %q, got %q", "[]\n", rec.Body.String())
+	}
+}

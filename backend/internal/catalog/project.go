@@ -168,7 +168,7 @@ func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
 	}
 	defer rows.Close()
 
-	var projects []Project
+	projects := []Project{}
 	for rows.Next() {
 		var p Project
 		if err := rows.Scan(&p.ID, &p.Name, &p.CreatedBy, &p.CreatedAt); err != nil {
@@ -212,7 +212,7 @@ func (s *Store) ProjectReport(ctx context.Context, projectID string) ([]ProjectR
 	}
 	defer rows.Close()
 
-	var report []ProjectReportRow
+	report := []ProjectReportRow{}
 	for rows.Next() {
 		var row ProjectReportRow
 		if err := rows.Scan(
