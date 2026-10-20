@@ -1,10 +1,10 @@
 ---
 change_id: home-landing-page
 title: Real home page content, sourced from shelfmark.online, with a login CTA
-status: implemented
+status: archived
 created: 2026-10-20
 updated: 2026-10-20
-archived_at: null
+archived_at: 2026-10-20T11:27:29Z
 ---
 
 ## Notes
