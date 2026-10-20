@@ -367,12 +367,12 @@ Migration `0005` is destructive (drops a column) but trivially reversible via it
 
 #### Automated
 
-- [x] 4.1 Full backend build + vet + tests
-- [x] 4.2 Full frontend typecheck + build
+- [x] 4.1 Full backend build + vet + tests — 661ebc5
+- [x] 4.2 Full frontend typecheck + build — 661ebc5
 
 #### Manual
 
-- [x] 4.3 Fresh-DB bootstrap, all 3 seeded accounts log in
-- [x] 4.4 Admin-added 4th user logs in immediately with correct role-gated access
-- [x] 4.5 Direct column correct after a real project SBOM upload
-- [x] 4.6 3rd strategic mark in a full category/ecosystem is rejected
+- [x] 4.3 Fresh-DB bootstrap, all 3 seeded accounts log in — 661ebc5
+- [x] 4.4 Admin-added 4th user logs in immediately with correct role-gated access — 661ebc5
+- [x] 4.5 Direct column correct after a real project SBOM upload — 661ebc5
+- [x] 4.6 3rd strategic mark in a full category/ecosystem is rejected — 661ebc5

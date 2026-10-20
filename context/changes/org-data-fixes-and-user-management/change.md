@@ -1,7 +1,7 @@
 ---
 change_id: org-data-fixes-and-user-management
 title: Fix FR-006/FR-007 data gaps and add DB-backed user management
-status: implementing
+status: implemented
 created: 2026-10-20
 updated: 2026-10-20
 archived_at: null
