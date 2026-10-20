@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { useAuth, type Me } from "../lib/auth";
@@ -15,10 +16,16 @@ export function Nav() {
   const { me, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState(false);
 
   async function handleLogout() {
-    await logout();
-    navigate("/login");
+    setLogoutError(false);
+    try {
+      await logout();
+      navigate("/login");
+    } catch {
+      setLogoutError(true);
+    }
   }
 
   const links = LINKS.filter((link) => me && link.roles.includes(me.role));
@@ -50,6 +57,9 @@ export function Nav() {
       </div>
 
       <div className="flex items-center gap-3 text-sm text-ink-dim">
+        {logoutError && (
+          <span className="text-destructive">Log out failed.</span>
+        )}
         <span className="hidden sm:inline">{me?.email}</span>
         <Button
           type="button"
