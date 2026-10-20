@@ -9,6 +9,8 @@ import {
   type OrganizationLibrary,
 } from "../lib/organization";
 import { RequireAuth } from "../lib/require-auth";
+import { Badge } from "../components/badge";
+import { Button } from "../components/button";
 
 function OrganizationContent() {
   const { me } = useAuth();
@@ -112,10 +114,10 @@ function OrganizationContent() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-xl font-semibold">Organization</h1>
+      <h1 className="font-serif text-xl font-semibold">Organization</h1>
 
-      <section className="mt-6 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-        <h2 className="text-lg font-medium">Libraries</h2>
+      <section className="mt-6 rounded-lg border border-rule bg-bg-soft p-4">
+        <h2 className="font-serif text-lg font-medium">Libraries</h2>
 
         <div className="mt-3 flex flex-wrap gap-3">
           <div className="space-y-1">
@@ -126,7 +128,7 @@ function OrganizationContent() {
               id="status-filter"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             >
               <option value="">All</option>
               <option value="pending">pending</option>
@@ -145,7 +147,7 @@ function OrganizationContent() {
               id="category-filter"
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             >
               <option value="">All</option>
               {categories.map((category) => (
@@ -166,7 +168,7 @@ function OrganizationContent() {
               value={ecosystemFilter}
               onChange={(event) => setEcosystemFilter(event.target.value)}
               placeholder="maven, npm…"
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             />
           </div>
 
@@ -178,7 +180,7 @@ function OrganizationContent() {
               id="strategic-filter"
               value={strategicFilter}
               onChange={(event) => setStrategicFilter(event.target.value)}
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             >
               <option value="">All</option>
               <option value="true">Strategic only</option>
@@ -188,16 +190,16 @@ function OrganizationContent() {
         </div>
 
         {librariesError && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{librariesError}</p>
+          <p className="mt-2 text-sm text-destructive">{librariesError}</p>
         )}
         {formError && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{formError}</p>
+          <p className="mt-2 text-sm text-destructive">{formError}</p>
         )}
 
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800">
+              <tr className="border-b border-rule">
                 <th className="py-2 pr-4">Purl</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Direct</th>
@@ -207,7 +209,7 @@ function OrganizationContent() {
             </thead>
             <tbody>
               {libraries.map((library) => (
-                <tr key={library.id} className="border-b border-gray-100 dark:border-gray-900">
+                <tr key={library.id} className="border-b border-rule">
                   <td className="py-2 pr-4 font-mono">{library.purl}</td>
                   <td className="py-2 pr-4">{library.status}</td>
                   <td className="py-2 pr-4">{library.is_direct ? "Yes" : "No"}</td>
@@ -231,24 +233,22 @@ function OrganizationContent() {
                               <div className="flex flex-wrap items-center gap-2">
                                 <span>{categoryName}</span>
                                 {mark ? (
-                                  <span
-                                    className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-900 dark:text-amber-100"
-                                    title={`${mark.justification} (by ${mark.marked_by})`}
-                                  >
-                                    Strategic
+                                  <span title={`${mark.justification} (by ${mark.marked_by})`}>
+                                    <Badge tone="accent">Strategic</Badge>
                                   </span>
                                 ) : null}
 
                                 {isArchitect && categoryId && key ? (
-                                  <button
+                                  <Button
                                     type="button"
+                                    variant="secondary"
                                     onClick={() =>
                                       setOpenForm((prev) => (prev === key ? null : key))
                                     }
-                                    className="rounded border border-gray-300 px-2 py-0.5 text-xs dark:border-gray-700"
+                                    className="px-2 py-0.5 text-xs"
                                   >
                                     {mark ? "Unmark" : "Mark strategic"}
-                                  </button>
+                                  </Button>
                                 ) : null}
                               </div>
 
@@ -264,9 +264,9 @@ function OrganizationContent() {
                                     }
                                     placeholder="Justification"
                                     rows={2}
-                                    className="w-64 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
+                                    className="w-64 rounded border border-rule bg-bg-soft px-2 py-1 text-xs text-ink"
                                   />
-                                  <button
+                                  <Button
                                     type="button"
                                     disabled={pendingKey === key}
                                     onClick={() =>
@@ -274,14 +274,14 @@ function OrganizationContent() {
                                         ? handleUnmark(library.id, categoryId)
                                         : handleMark(library.id, categoryId)
                                     }
-                                    className="rounded bg-gray-900 px-2 py-1 text-xs text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
+                                    className="px-2 py-1 text-xs"
                                   >
                                     {pendingKey === key
                                       ? "Submitting…"
                                       : mark
                                         ? "Confirm unmark"
                                         : "Confirm mark"}
-                                  </button>
+                                  </Button>
                                 </div>
                               ) : null}
                             </li>
@@ -294,7 +294,7 @@ function OrganizationContent() {
               ))}
               {libraries.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-gray-500">
+                  <td colSpan={5} className="py-4 text-center text-ink-faint">
                     No libraries match these filters.
                   </td>
                 </tr>

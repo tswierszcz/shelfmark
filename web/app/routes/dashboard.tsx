@@ -2,6 +2,8 @@ import { Link, useNavigate } from "react-router";
 
 import { useAuth } from "../lib/auth";
 import { RequireAuth } from "../lib/require-auth";
+import { Button } from "../components/button";
+import { Logo } from "../components/logo";
 
 function DashboardContent() {
   const { me, logout } = useAuth();
@@ -14,25 +16,22 @@ function DashboardContent() {
 
   return (
     <main className="mx-auto max-w-lg p-6">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
+      <Logo className="mb-6" />
+      <h1 className="font-serif text-xl font-semibold">Dashboard</h1>
       <p className="mt-4">
         Logged in as <span className="font-medium">{me?.email}</span> (
         {me?.role})
       </p>
       {me?.role === "admin" && (
         <p className="mt-2">
-          <Link to="/catalog" className="underline">
+          <Link to="/catalog" className="text-accent underline">
             Go to catalog
           </Link>
         </p>
       )}
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="mt-6 rounded bg-gray-900 px-3 py-2 text-white dark:bg-gray-100 dark:text-gray-900"
-      >
+      <Button type="button" onClick={handleLogout} className="mt-6">
         Log out
-      </button>
+      </Button>
     </main>
   );
 }

@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 
 import { useAuth } from "../lib/auth";
+import { Button } from "../components/button";
+import { Logo } from "../components/logo";
 
 export default function Login() {
   const { login } = useAuth();
@@ -30,9 +32,10 @@ export default function Login() {
     <main className="flex min-h-screen items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg border border-gray-200 p-6 dark:border-gray-800"
+        className="w-full max-w-sm space-y-4 rounded-lg border border-rule bg-bg-soft p-6"
       >
-        <h1 className="text-xl font-semibold">Log in</h1>
+        <Logo className="mb-2" />
+        <h1 className="font-serif text-xl font-semibold">Log in</h1>
 
         <div className="space-y-1">
           <label htmlFor="email" className="block text-sm font-medium">
@@ -44,7 +47,7 @@ export default function Login() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            className="w-full rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
           />
         </div>
 
@@ -58,23 +61,17 @@ export default function Login() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            className="w-full rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
           />
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Invalid email or password.
-          </p>
+          <p className="text-sm text-destructive">Invalid email or password.</p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded bg-gray-900 px-3 py-2 text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
-        >
+        <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? "Logging in…" : "Log in"}
-        </button>
+        </Button>
       </form>
     </main>
   );

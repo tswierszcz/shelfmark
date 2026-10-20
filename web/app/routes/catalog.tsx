@@ -11,6 +11,7 @@ import {
   type Library,
 } from "../lib/catalog";
 import { RequireAuth } from "../lib/require-auth";
+import { Button } from "../components/button";
 
 const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
 const POLL_INTERVAL_MS = 2000;
@@ -152,10 +153,10 @@ function CatalogContent() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-xl font-semibold">Catalog</h1>
+      <h1 className="font-serif text-xl font-semibold">Catalog</h1>
 
-      <section className="mt-6 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-        <h2 className="text-lg font-medium">Upload</h2>
+      <section className="mt-6 rounded-lg border border-rule bg-bg-soft p-4">
+        <h2 className="font-serif text-lg font-medium">Upload</h2>
         <form onSubmit={handleUpload} className="mt-3 flex flex-wrap items-end gap-3">
           <div className="space-y-1">
             <label htmlFor="kind" className="block text-sm font-medium">
@@ -165,7 +166,7 @@ function CatalogContent() {
               id="kind"
               value={kind}
               onChange={(event) => setKind(event.target.value as "sbom" | "csv")}
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             >
               <option value="sbom">SBOM</option>
               <option value="csv">CSV</option>
@@ -185,17 +186,13 @@ function CatalogContent() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={uploading || !file}
-            className="rounded bg-gray-900 px-3 py-2 text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
-          >
+          <Button type="submit" disabled={uploading || !file}>
             {uploading ? "Uploading…" : "Upload"}
-          </button>
+          </Button>
         </form>
 
         {uploadError && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>
+          <p className="mt-2 text-sm text-destructive">{uploadError}</p>
         )}
 
         {batchId && (
@@ -207,7 +204,7 @@ function CatalogContent() {
             {batchProgress && (
               <ul className="mt-1 flex flex-wrap gap-3">
                 {Object.entries(batchProgress).map(([status, count]) => (
-                  <li key={status} className="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">
+                  <li key={status} className="rounded border border-rule px-2 py-1">
                     {status}: {count}
                   </li>
                 ))}
@@ -217,8 +214,8 @@ function CatalogContent() {
         )}
       </section>
 
-      <section className="mt-6 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-        <h2 className="text-lg font-medium">Libraries</h2>
+      <section className="mt-6 rounded-lg border border-rule bg-bg-soft p-4">
+        <h2 className="font-serif text-lg font-medium">Libraries</h2>
 
         <div className="mt-3 flex flex-wrap gap-3">
           <div className="space-y-1">
@@ -229,7 +226,7 @@ function CatalogContent() {
               id="status-filter"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             >
               <option value="">All</option>
               <option value="pending">pending</option>
@@ -248,7 +245,7 @@ function CatalogContent() {
               id="category-filter"
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             >
               <option value="">All</option>
               {categories.map((category) => (
@@ -269,19 +266,19 @@ function CatalogContent() {
               value={ecosystemFilter}
               onChange={(event) => setEcosystemFilter(event.target.value)}
               placeholder="maven, npm…"
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+              className="rounded border border-rule bg-bg-soft px-3 py-2 text-ink"
             />
           </div>
         </div>
 
         {librariesError && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{librariesError}</p>
+          <p className="mt-2 text-sm text-destructive">{librariesError}</p>
         )}
 
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-800">
+              <tr className="border-b border-rule">
                 <th className="py-2 pr-4">Purl</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Categories</th>
@@ -291,7 +288,7 @@ function CatalogContent() {
             </thead>
             <tbody>
               {libraries.map((library) => (
-                <tr key={library.id} className="border-b border-gray-100 dark:border-gray-900">
+                <tr key={library.id} className="border-b border-rule">
                   <td className="py-2 pr-4 font-mono">{library.purl}</td>
                   <td className="py-2 pr-4">{library.status}</td>
                   <td className="py-2 pr-4">
@@ -308,7 +305,7 @@ function CatalogContent() {
                             [library.id]: event.target.value,
                           }))
                         }
-                        className="rounded border border-gray-300 px-2 py-1 dark:border-gray-700 dark:bg-gray-900"
+                        className="rounded border border-rule bg-bg-soft px-2 py-1 text-ink"
                       >
                         <option value="">Select…</option>
                         {categories.map((category) => (
@@ -317,21 +314,21 @@ function CatalogContent() {
                           </option>
                         ))}
                       </select>
-                      <button
+                      <Button
                         type="button"
                         disabled={attaching === library.id || !selectedCategory[library.id]}
                         onClick={() => handleAttach(library.id)}
-                        className="rounded bg-gray-900 px-2 py-1 text-xs text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
+                        className="px-2 py-1 text-xs"
                       >
                         {attaching === library.id ? "Adding…" : "Add"}
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
               ))}
               {libraries.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-gray-500">
+                  <td colSpan={5} className="py-4 text-center text-ink-faint">
                     No libraries match these filters.
                   </td>
                 </tr>
