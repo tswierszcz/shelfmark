@@ -8,5 +8,7 @@ export default [
   route("users", "routes/users.tsx"),
   route("organization", "routes/organization.tsx"),
   route("redundancy", "routes/redundancy.tsx"),
-  route("dev/kitchen-sink-redundancy", "routes/dev.kitchen-sink-redundancy.tsx"),
+  ...(import.meta.env.DEV
+    ? [route("dev/kitchen-sink-redundancy", "routes/dev.kitchen-sink-redundancy.tsx")]
+    : []),
 ] satisfies RouteConfig;
