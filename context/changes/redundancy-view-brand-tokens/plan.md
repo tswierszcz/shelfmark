@@ -309,5 +309,5 @@ Not applicable — no data model or API changes.
 #### Manual
 
 - [x] 4.4 `/dev/kitchen-sink-redundancy` shows all 7 states, clearly labeled and distinguishable — bd685aa
-- [ ] 4.5 Desktop + one mobile-width screenshots taken of both `/redundancy` and the kitchen sink (skipped by user decision — live review in this session substituted)
+- [x] 4.5 Desktop + one mobile-width screenshots taken of the kitchen sink (saved to `screenshots/`); `/redundancy` screenshots skipped — blocked by an unrelated pre-existing bug discovered while testing (GET /api/projects returns `null` instead of `[]` when empty, crashing the page for any project-less account; logged separately for a future fix, out of scope for this plan)
 - [x] 4.6 `CLAUDE.md` addition renders correctly, outside the CLI-managed block — bd685aa
