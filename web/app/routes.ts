@@ -5,6 +5,7 @@ export default [
   route("login", "routes/login.tsx"),
   route("dashboard", "routes/dashboard.tsx"),
   route("catalog", "routes/catalog.tsx"),
+  route("users", "routes/users.tsx"),
   route("organization", "routes/organization.tsx"),
   route("redundancy", "routes/redundancy.tsx"),
   route("dev/kitchen-sink-redundancy", "routes/dev.kitchen-sink-redundancy.tsx"),

@@ -339,29 +339,29 @@ Migration `0005` is destructive (drops a column) but trivially reversible via it
 
 #### Automated
 
-- [x] 2.1 Backend builds: `cd backend && go build ./...`
-- [x] 2.2 Backend vets clean: `cd backend && go vet ./...`
-- [x] 2.3 Backend tests pass: `cd backend && go test ./...`
+- [x] 2.1 Backend builds: `cd backend && go build ./...` — 65137a8
+- [x] 2.2 Backend vets clean: `cd backend && go vet ./...` — 65137a8
+- [x] 2.3 Backend tests pass: `cd backend && go test ./...` — 65137a8
 
 #### Manual
 
-- [x] 2.4 Fresh empty database bootstraps 3 `.env` accounts; all 3 can log in
-- [x] 2.5 Second restart with env vars unset still works (seed already persisted)
-- [x] 2.6 `POST /api/users` rejects duplicate email (409) and short password (400)
+- [x] 2.4 Fresh empty database bootstraps 3 `.env` accounts; all 3 can log in — 65137a8
+- [x] 2.5 Second restart with env vars unset still works (seed already persisted) — 65137a8
+- [x] 2.6 `POST /api/users` rejects duplicate email (409) and short password (400) — 65137a8
 
 ### Phase 3: Admin "Users" page
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `cd web && npm run typecheck`
-- [ ] 3.2 Build succeeds: `cd web && npm run build`
-- [ ] 3.3 Hardcoded-value grep scan returns 0 on `users.tsx`, `nav.tsx`, `routes.ts`
+- [x] 3.1 Type checking passes: `cd web && npm run typecheck`
+- [x] 3.2 Build succeeds: `cd web && npm run build`
+- [x] 3.3 Hardcoded-value grep scan returns 0 on `users.tsx`, `nav.tsx`, `routes.ts`
 
 #### Manual
 
-- [ ] 3.4 Admin sees "Users" nav link, adds a user, sees it in the list immediately
-- [ ] 3.5 New user logs in immediately (no restart), nav matches their role
-- [ ] 3.6 Non-admin never sees the "Users" link and can't reach `/users`
+- [x] 3.4 Admin sees "Users" nav link, adds a user, sees it in the list immediately
+- [x] 3.5 New user logs in immediately (no restart), nav matches their role
+- [x] 3.6 Non-admin never sees the "Users" link and can't reach `/users`
 
 ### Phase 4: End-to-end verification
 

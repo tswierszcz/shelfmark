@@ -8,6 +8,7 @@ import { Logo } from "./logo";
 const LINKS: { to: string; label: string; roles: Me["role"][] }[] = [
   { to: "/dashboard", label: "Dashboard", roles: ["admin", "architect", "viewer"] },
   { to: "/catalog", label: "Catalog", roles: ["admin"] },
+  { to: "/users", label: "Users", roles: ["admin"] },
   { to: "/organization", label: "Organization", roles: ["architect", "viewer"] },
   { to: "/redundancy", label: "Redundancy", roles: ["architect", "viewer"] },
 ];
