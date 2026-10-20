@@ -326,28 +326,28 @@ Migration `0005` is destructive (drops a column) but trivially reversible via it
 
 #### Automated
 
-- [x] 1.1 Backend builds: `cd backend && go build ./...`
-- [x] 1.2 Backend vets clean: `cd backend && go vet ./...`
-- [x] 1.3 Backend tests pass: `cd backend && go test ./...`
+- [x] 1.1 Backend builds: `cd backend && go build ./...` — 74daf0f
+- [x] 1.2 Backend vets clean: `cd backend && go vet ./...` — 74daf0f
+- [x] 1.3 Backend tests pass: `cd backend && go test ./...` — 74daf0f
 
 #### Manual
 
-- [x] 1.4 `/organization` Direct column reflects real project-upload data
-- [x] 1.5 3rd distinct strategic mark in the same category+ecosystem is rejected; 2nd mark and re-marking still succeed
+- [x] 1.4 `/organization` Direct column reflects real project-upload data — 74daf0f
+- [x] 1.5 3rd distinct strategic mark in the same category+ecosystem is rejected; 2nd mark and re-marking still succeed — 74daf0f
 
 ### Phase 2: Users table, bootstrap seeding, and admin CRUD API
 
 #### Automated
 
-- [ ] 2.1 Backend builds: `cd backend && go build ./...`
-- [ ] 2.2 Backend vets clean: `cd backend && go vet ./...`
-- [ ] 2.3 Backend tests pass: `cd backend && go test ./...`
+- [x] 2.1 Backend builds: `cd backend && go build ./...`
+- [x] 2.2 Backend vets clean: `cd backend && go vet ./...`
+- [x] 2.3 Backend tests pass: `cd backend && go test ./...`
 
 #### Manual
 
-- [ ] 2.4 Fresh empty database bootstraps 3 `.env` accounts; all 3 can log in
-- [ ] 2.5 Second restart with env vars unset still works (seed already persisted)
-- [ ] 2.6 `POST /api/users` rejects duplicate email (409) and short password (400)
+- [x] 2.4 Fresh empty database bootstraps 3 `.env` accounts; all 3 can log in
+- [x] 2.5 Second restart with env vars unset still works (seed already persisted)
+- [x] 2.6 `POST /api/users` rejects duplicate email (409) and short password (400)
 
 ### Phase 3: Admin "Users" page
 

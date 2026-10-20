@@ -2,22 +2,127 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/tswierszcz/shelfmark/backend/internal/db"
 )
 
-func testAccounts(t *testing.T, password string) Accounts {
+// startTestPostgres starts a throwaway Postgres container via the docker CLI
+// and returns a connected, migrated *pgxpool.Pool, plus registers cleanup
+// via t.Cleanup that closes the pool and stops/removes the container. The
+// test is skipped (not failed) if Docker isn't available.
+//
+// This mirrors catalog/store_test.go's helper of the same shape (internal/db's
+// own version is unexported from that package, so it can't be reused
+// directly); kept intentionally small rather than factored into a shared
+// test-helper package for just two callers.
+func startTestPostgres(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("docker not available, skipping integration test")
+	}
+	if err := exec.Command("docker", "info").Run(); err != nil {
+		t.Skip("docker daemon not reachable, skipping integration test")
+	}
+
+	port, err := findFreePort()
+	if err != nil {
+		t.Fatalf("failed to find a free port: %v", err)
+	}
+
+	containerName := fmt.Sprintf("shelfmark-auth-test-%d", time.Now().UnixNano())
+	runArgs := []string{
+		"run", "--rm", "-d",
+		"--name", containerName,
+		"-p", fmt.Sprintf("%d:5432", port),
+		"-e", "POSTGRES_PASSWORD=postgres",
+		"postgres:16-alpine",
+	}
+	out, err := exec.Command("docker", runArgs...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("docker run failed: %v\n%s", err, out)
+	}
+
+	t.Cleanup(func() {
+		exec.Command("docker", "rm", "-f", containerName).Run()
+	})
+
+	databaseURL := fmt.Sprintf("postgres://postgres:postgres@localhost:%d/postgres?sslmode=disable", port)
+	t.Setenv("DATABASE_URL", databaseURL)
+
+	pool := waitForPostgres(t, databaseURL)
+
+	if err := db.Migrate(databaseURL); err != nil {
+		t.Fatalf("Migrate failed: %v", err)
+	}
+
+	t.Cleanup(pool.Close)
+
+	return pool
+}
+
+func findFreePort() (int, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func waitForPostgres(t *testing.T, databaseURL string) *pgxpool.Pool {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	var lastErr error
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("postgres did not become ready in time: %v", lastErr)
+		default:
+		}
+
+		pool, err := db.Connect(ctx)
+		if err == nil {
+			return pool
+		}
+		lastErr = err
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+// testUsersStore returns a *UsersStore backed by a fresh, migrated test
+// database, pre-populated with a single admin@example.com account hashed
+// from password via bcrypt.
+func testUsersStore(t *testing.T, password string) *UsersStore {
+	t.Helper()
+
+	pool := startTestPostgres(t)
+	store := NewUsersStore(pool)
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		t.Fatalf("bcrypt.GenerateFromPassword() unexpected error: %v", err)
 	}
-	return Accounts{
-		"admin@example.com": {Role: RoleAdmin, PasswordHash: string(hash)},
+	if err := store.Create(context.Background(), "admin@example.com", string(hash), RoleAdmin); err != nil {
+		t.Fatalf("store.Create() unexpected error: %v", err)
 	}
+
+	return store
 }
 
 func loginRequestBody(t *testing.T, email, password string) *bytes.Reader {
@@ -30,12 +135,12 @@ func loginRequestBody(t *testing.T, email, password string) *bytes.Reader {
 
 func TestLoginHandler_CorrectCredentials(t *testing.T) {
 	setSessionSecret(t)
-	accounts := testAccounts(t, "correct-password")
+	store := testUsersStore(t, "correct-password")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/login", loginRequestBody(t, "admin@example.com", "correct-password"))
 	rec := httptest.NewRecorder()
 
-	LoginHandler(accounts)(rec, req)
+	LoginHandler(store)(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
@@ -63,12 +168,12 @@ func TestLoginHandler_CorrectCredentials(t *testing.T) {
 
 func TestLoginHandler_WrongPassword(t *testing.T) {
 	setSessionSecret(t)
-	accounts := testAccounts(t, "correct-password")
+	store := testUsersStore(t, "correct-password")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/login", loginRequestBody(t, "admin@example.com", "wrong-password"))
 	rec := httptest.NewRecorder()
 
-	LoginHandler(accounts)(rec, req)
+	LoginHandler(store)(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
@@ -77,12 +182,12 @@ func TestLoginHandler_WrongPassword(t *testing.T) {
 
 func TestLoginHandler_UnknownEmail(t *testing.T) {
 	setSessionSecret(t)
-	accounts := testAccounts(t, "correct-password")
+	store := testUsersStore(t, "correct-password")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/login", loginRequestBody(t, "nobody@example.com", "correct-password"))
 	rec := httptest.NewRecorder()
 
-	LoginHandler(accounts)(rec, req)
+	LoginHandler(store)(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)

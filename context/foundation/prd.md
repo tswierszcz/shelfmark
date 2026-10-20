@@ -98,6 +98,8 @@ Login required (email + password); accounts/roles provisioned via instance confi
 | Architect | Uploads project SBOMs for analysis; sets and changes recommendations (standard / to retire) with justification |
 | Viewer | Views reports and current recommendations; no edit capabilities |
 
+Accounts are now managed through an in-app admin page backed by a database table, with the original `.env` variables retained only as the one-time bootstrap source for a fresh deployment.
+
 ## Non-Goals
 
 - No ecosystems other than Java/Maven (and optionally Python) — npm, Go, Ruby, .NET and others are out of MVP scope.

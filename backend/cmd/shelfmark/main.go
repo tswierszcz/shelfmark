@@ -16,11 +16,6 @@ func main() {
 	addr := ":" + envOr("PORT", "8080")
 	staticDir := envOr("STATIC_DIR", "../web/build/client")
 
-	accounts, err := auth.LoadAccounts()
-	if err != nil {
-		log.Fatalf("auth: failed to load accounts: %v", err)
-	}
-
 	pool, err := db.Connect(context.Background())
 	if err != nil {
 		log.Fatalf("db: failed to connect: %v", err)
@@ -28,6 +23,12 @@ func main() {
 	if err := db.Migrate(os.Getenv("DATABASE_URL")); err != nil {
 		pool.Close()
 		log.Fatalf("db: failed to migrate: %v", err)
+	}
+
+	usersStore := auth.NewUsersStore(pool)
+	if err := usersStore.SeedFromEnvIfEmpty(context.Background()); err != nil {
+		pool.Close()
+		log.Fatalf("auth: failed to seed accounts: %v", err)
 	}
 
 	catalogStore := catalog.NewStore(pool)
@@ -41,9 +42,11 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", db.HealthCheck(pool))
-	mux.HandleFunc("POST /api/login", auth.LoginHandler(accounts))
+	mux.HandleFunc("POST /api/login", auth.LoginHandler(usersStore))
 	mux.HandleFunc("POST /api/logout", auth.LogoutHandler())
 	mux.HandleFunc("GET /api/me", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(auth.MeHandler()))
+	mux.HandleFunc("POST /api/users", auth.RequireRole(auth.RoleAdmin)(auth.CreateUserHandler(usersStore)))
+	mux.HandleFunc("GET /api/users", auth.RequireRole(auth.RoleAdmin)(auth.ListUsersHandler(usersStore)))
 	mux.HandleFunc("POST /api/catalog/upload", auth.RequireRole(auth.RoleAdmin)(catalog.UploadHandler(catalogStore, catalogQueue)))
 	mux.HandleFunc("GET /api/catalog/batches/{batchID}", auth.RequireRole(auth.RoleAdmin)(catalog.BatchProgressHandler(catalogStore)))
 	mux.HandleFunc("GET /api/catalog/libraries", auth.RequireRole(auth.RoleAdmin)(catalog.ListLibrariesHandler(catalogStore)))
