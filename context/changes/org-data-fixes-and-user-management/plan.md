@@ -353,26 +353,26 @@ Migration `0005` is destructive (drops a column) but trivially reversible via it
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `cd web && npm run typecheck`
-- [x] 3.2 Build succeeds: `cd web && npm run build`
-- [x] 3.3 Hardcoded-value grep scan returns 0 on `users.tsx`, `nav.tsx`, `routes.ts`
+- [x] 3.1 Type checking passes: `cd web && npm run typecheck` — 63a24e8
+- [x] 3.2 Build succeeds: `cd web && npm run build` — 63a24e8
+- [x] 3.3 Hardcoded-value grep scan returns 0 on `users.tsx`, `nav.tsx`, `routes.ts` — 63a24e8
 
 #### Manual
 
-- [x] 3.4 Admin sees "Users" nav link, adds a user, sees it in the list immediately
-- [x] 3.5 New user logs in immediately (no restart), nav matches their role
-- [x] 3.6 Non-admin never sees the "Users" link and can't reach `/users`
+- [x] 3.4 Admin sees "Users" nav link, adds a user, sees it in the list immediately — 63a24e8
+- [x] 3.5 New user logs in immediately (no restart), nav matches their role — 63a24e8
+- [x] 3.6 Non-admin never sees the "Users" link and can't reach `/users` — 63a24e8
 
 ### Phase 4: End-to-end verification
 
 #### Automated
 
-- [ ] 4.1 Full backend build + vet + tests
-- [ ] 4.2 Full frontend typecheck + build
+- [x] 4.1 Full backend build + vet + tests
+- [x] 4.2 Full frontend typecheck + build
 
 #### Manual
 
-- [ ] 4.3 Fresh-DB bootstrap, all 3 seeded accounts log in
-- [ ] 4.4 Admin-added 4th user logs in immediately with correct role-gated access
-- [ ] 4.5 Direct column correct after a real project SBOM upload
-- [ ] 4.6 3rd strategic mark in a full category/ecosystem is rejected
+- [x] 4.3 Fresh-DB bootstrap, all 3 seeded accounts log in
+- [x] 4.4 Admin-added 4th user logs in immediately with correct role-gated access
+- [x] 4.5 Direct column correct after a real project SBOM upload
+- [x] 4.6 3rd strategic mark in a full category/ecosystem is rejected

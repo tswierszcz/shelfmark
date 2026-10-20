@@ -27,5 +27,6 @@ node_modules/
 
 # Editors and OS
 .idea/
+.vscode/
 *.swp
 .DS_Store
