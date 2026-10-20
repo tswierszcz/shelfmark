@@ -1,10 +1,10 @@
 ---
 change_id: views-brand-tokens-rollout
 title: Roll out Shelfmark brand design tokens to the remaining views
-status: implemented
+status: archived
 created: 2026-10-20
 updated: 2026-10-20
-archived_at: null
+archived_at: 2026-10-20T11:21:14Z
 ---
 
 ## Notes
