@@ -28,7 +28,11 @@ export async function login(email: string, password: string): Promise<Me> {
 }
 
 export async function logout(): Promise<void> {
-  await fetch("/api/logout", { method: "POST" });
+  const res = await fetch("/api/logout", { method: "POST" });
+
+  if (!res.ok) {
+    throw new Error("Logout failed");
+  }
 }
 
 export async function me(): Promise<Me | null> {

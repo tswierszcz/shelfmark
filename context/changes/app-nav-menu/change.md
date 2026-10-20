@@ -1,7 +1,7 @@
 ---
 change_id: app-nav-menu
 title: Shared navigation menu across authenticated views
-status: implemented
+status: impl_reviewed
 created: 2026-10-20
 updated: 2026-10-20
 archived_at: null
