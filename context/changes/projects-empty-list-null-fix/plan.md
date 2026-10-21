@@ -197,9 +197,9 @@ Not applicable — no schema or data changes.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `cd web && npm run typecheck`
-- [x] 2.2 Build succeeds: `cd web && npm run build`
+- [x] 2.1 Type checking passes: `cd web && npm run typecheck` — 0fa5df8
+- [x] 2.2 Build succeeds: `cd web && npm run build` — 0fa5df8
 
 #### Manual
 
-- [x] 2.3 `/redundancy` loads without error for an architect account with zero projects
+- [x] 2.3 `/redundancy` loads without error for an architect account with zero projects — 0fa5df8
