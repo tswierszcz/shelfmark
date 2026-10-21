@@ -1,10 +1,10 @@
 ---
 change_id: projects-empty-list-null-fix
 title: Fix GET /api/projects returning null instead of [] when empty
-status: impl_reviewed
+status: archived
 created: 2026-10-20
 updated: 2026-10-21
-archived_at: null
+archived_at: 2026-10-21T09:18:55Z
 ---
 
 ## Notes
