@@ -187,19 +187,19 @@ Not applicable — no schema or data changes.
 
 #### Automated
 
-- [x] 1.1 Backend tests pass: `go test ./backend/internal/catalog/... ./backend/internal/auth/...`
+- [x] 1.1 Backend tests pass: `go test ./backend/internal/catalog/... ./backend/internal/auth/...` — 4a6d826
 
 #### Manual
 
-- [x] 1.2 `curl -s http://localhost:8080/api/projects` (zero projects) returns `[]`, not `null`
+- [x] 1.2 `curl -s http://localhost:8080/api/projects` (zero projects) returns `[]`, not `null` — 4a6d826
 
 ### Phase 2: Frontend defensive fallbacks
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `cd web && npm run typecheck`
-- [ ] 2.2 Build succeeds: `cd web && npm run build`
+- [x] 2.1 Type checking passes: `cd web && npm run typecheck`
+- [x] 2.2 Build succeeds: `cd web && npm run build`
 
 #### Manual
 
-- [ ] 2.3 `/redundancy` loads without error for an architect account with zero projects
+- [x] 2.3 `/redundancy` loads without error for an architect account with zero projects

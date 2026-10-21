@@ -54,7 +54,7 @@ function RedundancyContent() {
     try {
       setProjectsError(null);
       const result = await listProjects();
-      setProjects(result);
+      setProjects(result ?? []);
       return result;
     } catch {
       setProjectsError("Failed to load projects.");

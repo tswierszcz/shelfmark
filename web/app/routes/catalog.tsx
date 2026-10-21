@@ -58,7 +58,7 @@ function CatalogContent() {
         ecosystem: ecosystemFilter || undefined,
       };
       const result = await listLibraries(filter);
-      setLibraries(result);
+      setLibraries(result ?? []);
     } catch {
       setLibrariesError("Failed to load libraries.");
     }
@@ -67,7 +67,7 @@ function CatalogContent() {
   useEffect(() => {
     refreshLibraries();
     listTaxonomy()
-      .then(setCategories)
+      .then((result) => setCategories(result ?? []))
       .catch(() => setCategories([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

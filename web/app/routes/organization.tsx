@@ -42,7 +42,7 @@ function OrganizationContent() {
           strategicFilter === "" ? undefined : strategicFilter === "true",
       };
       const result = await listOrganizationLibraries(filter);
-      setLibraries(result);
+      setLibraries(result ?? []);
     } catch {
       setLibrariesError("Failed to load libraries.");
     }
@@ -51,7 +51,7 @@ function OrganizationContent() {
   useEffect(() => {
     refreshLibraries();
     listTaxonomy()
-      .then(setCategories)
+      .then((result) => setCategories(result ?? []))
       .catch(() => setCategories([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

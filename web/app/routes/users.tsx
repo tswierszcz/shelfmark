@@ -19,7 +19,7 @@ function UsersContent() {
     try {
       setUsersError(null);
       const result = await listUsers();
-      setUsers(result);
+      setUsers(result ?? []);
     } catch {
       setUsersError("Failed to load users.");
     }
