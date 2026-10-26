@@ -1,81 +1,19 @@
 package auth
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/obs"
+	"github.com/tswierszcz/shelfmark/backend/internal/obs/obstest"
 )
 
-// logSink is a mutex-guarded writer that collects JSON log lines.
-type logSink struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (s *logSink) Write(p []byte) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.buf.Write(p)
-}
-
-// Lines returns every captured log line decoded as a JSON object.
-func (s *logSink) Lines() []map[string]any {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	lines := make([]map[string]any, 0)
-	for _, raw := range strings.Split(s.buf.String(), "\n") {
-		if strings.TrimSpace(raw) == "" {
-			continue
-		}
-		var m map[string]any
-		if err := json.Unmarshal([]byte(raw), &m); err == nil {
-			lines = append(lines, m)
-		}
-	}
-	return lines
-}
-
-// Find returns the lines whose msg equals msg and whose attributes match every
-// key/value pair in attrs (values compared via fmt.Sprint).
-func (s *logSink) Find(msg string, attrs ...any) []map[string]any {
-	found := make([]map[string]any, 0)
-	for _, line := range s.Lines() {
-		if line["msg"] != msg {
-			continue
-		}
-		match := true
-		for i := 0; i+1 < len(attrs); i += 2 {
-			if fmt.Sprint(line[fmt.Sprint(attrs[i])]) != fmt.Sprint(attrs[i+1]) {
-				match = false
-				break
-			}
-		}
-		if match {
-			found = append(found, line)
-		}
-	}
-	return found
-}
-
-// captureLogs installs a JSON logger over a sink as the slog default for the
-// duration of the test.
-func captureLogs(t *testing.T) *logSink {
-	t.Helper()
-	sink := &logSink{}
-	prev := slog.Default()
-	slog.SetDefault(obs.NewLogger(sink))
-	t.Cleanup(func() { slog.SetDefault(prev) })
-	return sink
-}
+// captureLogs installs a capturing JSON logger for the duration of the test.
+func captureLogs(t *testing.T) *obstest.Sink { return obstest.CaptureWith(t, obs.NewLogger) }
 
 func withSessionSecret(t *testing.T) {
 	t.Helper()

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
@@ -104,14 +105,26 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownBudget)
 	defer cancel()
 
-	// Order matters: stop the HTTP server first so no handler can Enqueue
-	// after the queue stops, then drain the queue, then close the pool.
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("http: shutdown incomplete", "error", err.Error())
-	}
-	if err := catalogQueue.Shutdown(shutdownCtx); err != nil {
-		slog.Error("queue: shutdown incomplete", "error", err.Error())
-	}
+	// The HTTP server and the queue drain concurrently under one budget: an
+	// upload handler blocked in Enqueue on a full channel is released by the
+	// queue's stop signal (the job is dropped and stays pending for the next
+	// boot sweep), so it cannot hold srv.Shutdown for the whole budget. The
+	// pool closes only after both are done.
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("http: shutdown incomplete", "error", err.Error())
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if err := catalogQueue.Shutdown(shutdownCtx); err != nil {
+			slog.Error("queue: shutdown incomplete", "error", err.Error())
+		}
+	}()
+	wg.Wait()
 	pool.Close()
 	slog.Info("shutdown complete")
 }

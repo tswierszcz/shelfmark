@@ -1,61 +1,18 @@
 package db
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"strings"
-	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/tswierszcz/shelfmark/backend/internal/obs"
+	"github.com/tswierszcz/shelfmark/backend/internal/obs/obstest"
 )
 
-// logSink is a mutex-guarded writer that collects JSON log lines. It mirrors
-// the helper of the same name in the auth, catalog and obs test packages.
-type logSink struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (s *logSink) Write(p []byte) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.buf.Write(p)
-}
-
-// Lines returns every captured log line decoded as a JSON object.
-func (s *logSink) Lines() []map[string]any {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	lines := make([]map[string]any, 0)
-	for _, raw := range strings.Split(s.buf.String(), "\n") {
-		if strings.TrimSpace(raw) == "" {
-			continue
-		}
-		var m map[string]any
-		if err := json.Unmarshal([]byte(raw), &m); err == nil {
-			lines = append(lines, m)
-		}
-	}
-	return lines
-}
-
-// captureLogs installs a JSON logger over a sink as the slog default for the
-// duration of the test.
-func captureLogs(t *testing.T) *logSink {
-	t.Helper()
-	sink := &logSink{}
-	prev := slog.Default()
-	slog.SetDefault(obs.NewLogger(sink))
-	t.Cleanup(func() { slog.SetDefault(prev) })
-	return sink
-}
+// captureLogs installs a capturing JSON logger for the duration of the test.
+func captureLogs(t *testing.T) *obstest.Sink { return obstest.CaptureWith(t, obs.NewLogger) }
 
 func TestHealthCheck_DBDown_Logs(t *testing.T) {
 	// pgxpool.New connects lazily, so no database is needed: closing the pool

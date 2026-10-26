@@ -3,6 +3,7 @@ package obs
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -34,11 +35,16 @@ func Middleware(mux *http.ServeMux) http.Handler {
 		sw := &statusWriter{ResponseWriter: w}
 
 		defer func() {
+			// abort is set when a handler panicked after its headers were
+			// sent: the response can no longer become a 500, so after the
+			// access line the connection is aborted (as net/http would do)
+			// instead of ending a truncated body cleanly.
+			abort := false
 			if rec := recover(); rec != nil {
 				if rec == http.ErrAbortHandler {
 					panic(rec)
 				}
-				args := append(ri.Attrs(), "panic", rec, "stack", string(debug.Stack()))
+				args := append(ri.Attrs(), "panic", fmt.Sprint(rec), "stack", string(debug.Stack()))
 				slog.Default().ErrorContext(r.Context(), "panic", args...)
 				if !sw.wroteHeader {
 					sw.Header().Set("Content-Type", "application/json")
@@ -46,18 +52,21 @@ func Middleware(mux *http.ServeMux) http.Handler {
 					_, _ = sw.Write([]byte(`{"error":"internal server error"}` + "\n"))
 				} else {
 					sw.status = http.StatusInternalServerError
+					abort = true
 				}
 			}
 
 			status := sw.statusCode()
-			if !strings.HasPrefix(r.URL.Path, "/api/") && status < http.StatusInternalServerError {
-				return
+			if strings.HasPrefix(r.URL.Path, "/api/") || status >= http.StatusInternalServerError {
+				args := append(ri.Attrs(),
+					"status", status,
+					"duration_ms", time.Since(start).Milliseconds(),
+				)
+				slog.Default().InfoContext(r.Context(), "request", args...)
 			}
-			args := append(ri.Attrs(),
-				"status", status,
-				"duration_ms", time.Since(start).Milliseconds(),
-			)
-			slog.Default().InfoContext(r.Context(), "request", args...)
+			if abort {
+				panic(http.ErrAbortHandler)
+			}
 		}()
 
 		mux.ServeHTTP(sw, r)

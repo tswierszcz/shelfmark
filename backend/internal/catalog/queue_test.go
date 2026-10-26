@@ -330,9 +330,39 @@ func TestQueue_Sweep_RequeuesStuckLibraries(t *testing.T) {
 	}
 
 	pollUntilStatus(t, store, stuck.ID, stuck.UploadBatchID, "categorized", 5*time.Second)
-	// Give a wrongly-enqueued fresh row time to be picked up before checking.
-	time.Sleep(300 * time.Millisecond)
-	pollUntilStatus(t, store, fresh.ID, fresh.UploadBatchID, "pending", time.Second)
+	// A wrongly-enqueued fresh row would leave "pending" within this window.
+	assertStaysStatus(t, store, fresh, "pending", 500*time.Millisecond)
+}
+
+// assertStaysStatus fails if lib's status differs from want at any point
+// during the window, sampling every 25ms (unlike pollUntilStatus, which
+// succeeds on the first matching read).
+func assertStaysStatus(t *testing.T, store *Store, lib Library, want string, window time.Duration) {
+	t.Helper()
+	ctx := context.Background()
+	deadline := time.Now().Add(window)
+	for {
+		libs, err := store.ListLibraries(ctx, LibraryFilter{BatchID: lib.UploadBatchID})
+		if err != nil {
+			t.Fatalf("ListLibraries failed: %v", err)
+		}
+		found := false
+		for _, l := range libs {
+			if l.ID == lib.ID {
+				found = true
+				if l.Status != want {
+					t.Fatalf("library %q status = %q, want it to stay %q", lib.ID, l.Status, want)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("library %q not found in batch %q", lib.ID, lib.UploadBatchID)
+		}
+		if time.Now().After(deadline) {
+			return
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 }
 
 // blockingFinder blocks until released or until its ctx is cancelled,
@@ -388,9 +418,12 @@ func TestQueue_Shutdown_WaitsForInFlightThenStops(t *testing.T) {
 		}
 		pollUntilStatus(t, store, inFlight.ID, inFlight.UploadBatchID, "categorized", time.Second)
 
+		sink := captureLogs(t)
 		queue.Enqueue(late)
-		time.Sleep(200 * time.Millisecond)
-		pollUntilStatus(t, store, late.ID, late.UploadBatchID, "pending", time.Second)
+		if got := sink.Find("queue: enqueue after shutdown, job dropped", "library_id", late.ID); len(got) != 1 {
+			t.Fatalf("expected one dropped-job warning for %s, got %v", late.ID, sink.Lines())
+		}
+		assertStaysStatus(t, store, late, "pending", 300*time.Millisecond)
 	})
 
 	t.Run("never released", func(t *testing.T) {
@@ -428,8 +461,11 @@ func TestQueue_Shutdown_WaitsForInFlightThenStops(t *testing.T) {
 		}
 		pollUntilStatus(t, store, inFlight.ID, inFlight.UploadBatchID, "processing", time.Second)
 
+		sink := captureLogs(t)
 		queue.Enqueue(late)
-		time.Sleep(200 * time.Millisecond)
-		pollUntilStatus(t, store, late.ID, late.UploadBatchID, "pending", time.Second)
+		if got := sink.Find("queue: enqueue after shutdown, job dropped", "library_id", late.ID); len(got) != 1 {
+			t.Fatalf("expected one dropped-job warning for %s, got %v", late.ID, sink.Lines())
+		}
+		assertStaysStatus(t, store, late, "pending", 300*time.Millisecond)
 	})
 }
