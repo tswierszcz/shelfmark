@@ -337,11 +337,11 @@ No schema migration. Deploy note for the later `prod-deploy` change: set Fly `ki
 
 #### Automated
 
-- [x] 3.1 go build and go vet pass
-- [x] 3.2 Queue and ListStuckLibraries tests pass
-- [x] 3.3 Full suite passes
-- [x] 3.4 No discarded queue store errors remain
+- [x] 3.1 go build and go vet pass — a5762fd
+- [x] 3.2 Queue and ListStuckLibraries tests pass — a5762fd
+- [x] 3.3 Full suite passes — a5762fd
+- [x] 3.4 No discarded queue store errors remain — a5762fd
 
 #### Manual
 
-- [x] 3.5 SIGTERM mid-batch logs shutting down, queue shutdown and shutdown complete with exit 0; restart after threshold logs boot sweep with requeued > 0 and leftovers settle
+- [x] 3.5 SIGTERM mid-batch logs shutting down, queue shutdown and shutdown complete with exit 0; restart after threshold logs boot sweep with requeued > 0 and leftovers settle — a5762fd
