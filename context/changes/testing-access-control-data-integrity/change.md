@@ -1,7 +1,7 @@
 ---
 change_id: testing-access-control-data-integrity
 title: Access control and data-integrity regression tests
-status: implementing
+status: implemented
 created: 2026-10-26
 updated: 2026-10-26
 archived_at: null

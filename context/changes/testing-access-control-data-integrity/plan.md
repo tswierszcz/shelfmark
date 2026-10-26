@@ -298,8 +298,8 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Automated
 
-- [x] 4.1 PRD Admin row no longer lists project SBOM upload
-- [x] 4.2 test-plan §6.2 documents all three patterns
+- [x] 4.1 PRD Admin row no longer lists project SBOM upload — 856dd41
+- [x] 4.2 test-plan §6.2 documents all three patterns — 856dd41
 
 #### Manual
 
