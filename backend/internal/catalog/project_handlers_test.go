@@ -197,6 +197,48 @@ func TestProjectUploadHandler_NewProjectIngestsAndRecordsMembership(t *testing.T
 	}
 }
 
+func TestProjectUploadHandler_OversizedFileReturns400(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	queue := &recordingEnqueuer{}
+
+	t.Setenv("SESSION_SECRET", "test-secret")
+	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+
+	handler := auth.RequireRole(auth.RoleArchitect)(ProjectUploadHandler(store, queue))
+
+	oversized := bytes.Repeat([]byte("a"), maxUploadBytes+1)
+	req := newProjectUploadRequest(t, "Oversized Project", "sbom.json", oversized)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if len(queue.enqueued) != 0 {
+		t.Fatalf("expected no libraries enqueued, got %+v", queue.enqueued)
+	}
+
+	ctx := context.Background()
+	libs, err := store.ListLibraries(ctx, LibraryFilter{})
+	if err != nil {
+		t.Fatalf("ListLibraries failed: %v", err)
+	}
+	if len(libs) != 0 {
+		t.Fatalf("expected no libraries persisted, got %+v", libs)
+	}
+
+	projects, err := store.ListProjects(ctx)
+	if err != nil {
+		t.Fatalf("ListProjects failed: %v", err)
+	}
+	if len(projects) != 0 {
+		t.Fatalf("expected no projects persisted, got %+v", projects)
+	}
+}
+
 func TestProjectUploadHandler_MissingProjectNameReturns400(t *testing.T) {
 	pool := startTestPostgres(t)
 	store := NewStore(pool)

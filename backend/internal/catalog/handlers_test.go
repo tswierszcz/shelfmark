@@ -150,6 +150,36 @@ func TestUploadHandler_MalformedSBOMReturns400(t *testing.T) {
 	}
 }
 
+func TestUploadHandler_OversizedFileReturns400(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	queue := &recordingEnqueuer{}
+
+	handler := UploadHandler(store, queue)
+
+	oversized := bytes.Repeat([]byte("a"), maxUploadBytes+1)
+	req := newMultipartUploadRequest(t, "sbom", "sbom.json", oversized)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if len(queue.enqueued) != 0 {
+		t.Fatalf("expected no libraries enqueued, got %+v", queue.enqueued)
+	}
+
+	libs, err := store.ListLibraries(context.Background(), LibraryFilter{})
+	if err != nil {
+		t.Fatalf("ListLibraries failed: %v", err)
+	}
+	if len(libs) != 0 {
+		t.Fatalf("expected no libraries persisted, got %+v", libs)
+	}
+}
+
 func TestBatchProgressHandler_ReturnsEmptyMapForUnknownBatch(t *testing.T) {
 	pool := startTestPostgres(t)
 	store := NewStore(pool)

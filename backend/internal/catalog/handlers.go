@@ -31,6 +31,13 @@ func NewNoopEnqueuer() Enqueuer {
 	return noopEnqueuer{}
 }
 
+// maxUploadBytes caps the request body read for the multipart upload
+// handlers (UploadHandler, ProjectUploadHandler), mirroring the
+// http.MaxBytesReader pattern used for login in auth/handlers.go. An
+// oversized SBOM/CSV upload is rejected with a clean 400 instead of being
+// read to completion unbounded.
+const maxUploadBytes = 10 << 20 // 10MB
+
 type uploadResponse struct {
 	BatchID string       `json:"batch_id"`
 	Created int          `json:"created"`
@@ -54,6 +61,20 @@ func writeCatalogError(w http.ResponseWriter, status int, msg string) {
 // newly-created library for background categorization.
 func UploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+
+		// Parse the multipart form explicitly so an oversized body is
+		// caught here with a specific message, rather than silently
+		// discarded by FormValue (which swallows parse errors and would
+		// otherwise surface as a misleading "kind must be..." 400).
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			var maxErr *http.MaxBytesError
+			if errors.As(err, &maxErr) {
+				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				return
+			}
+		}
+
 		kind := r.FormValue("kind")
 		if kind != "sbom" && kind != "csv" {
 			writeCatalogError(w, http.StatusBadRequest, `kind must be "sbom" or "csv"`)
@@ -62,6 +83,11 @@ func UploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 
 		file, _, err := r.FormFile("file")
 		if err != nil {
+			var maxErr *http.MaxBytesError
+			if errors.As(err, &maxErr) {
+				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				return
+			}
 			writeCatalogError(w, http.StatusBadRequest, "missing file")
 			return
 		}

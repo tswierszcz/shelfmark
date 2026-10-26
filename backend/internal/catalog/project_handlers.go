@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -25,10 +26,24 @@ type projectUploadResponse struct {
 // (direct/transitive) with the SBOM's current contents.
 func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+
 		session, ok := auth.SessionFromContext(r.Context())
 		if !ok {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
+		}
+
+		// Parse the multipart form explicitly so an oversized body is
+		// caught here with a specific message, rather than silently
+		// discarded by FormValue (which swallows parse errors and would
+		// otherwise surface as a misleading "missing project_name" 400).
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			var maxErr *http.MaxBytesError
+			if errors.As(err, &maxErr) {
+				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				return
+			}
 		}
 
 		projectName := strings.TrimSpace(r.FormValue("project_name"))
@@ -39,6 +54,11 @@ func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 
 		file, _, err := r.FormFile("file")
 		if err != nil {
+			var maxErr *http.MaxBytesError
+			if errors.As(err, &maxErr) {
+				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				return
+			}
 			writeCatalogError(w, http.StatusBadRequest, "missing file")
 			return
 		}
