@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
@@ -44,6 +47,14 @@ func main() {
 	finders := []catalog.RepoFinder{catalog.NewDepsDevClient(), openRouterClient}
 	catalogQueue := catalog.NewQueue(catalogStore, finders, catalog.NewGitHubClient(), openRouterClient, 5)
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Re-enqueue libraries orphaned by a previous restart. Runs in the
+	// background so a large backlog (Enqueue blocks on a full channel) can't
+	// delay serving or the health check.
+	go catalogQueue.Sweep(ctx, catalog.StuckLibraryAge)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", db.HealthCheck(pool))
 	mux.HandleFunc("POST /api/login", auth.LoginHandler(usersStore))
@@ -74,11 +85,40 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	slog.Info("listening", "addr", addr, "static_dir", staticDir)
-	if err := srv.ListenAndServe(); err != nil {
-		fatal("http: server stopped", err)
+	serveErr := make(chan error, 1)
+	go func() {
+		slog.Info("listening", "addr", addr, "static_dir", staticDir)
+		serveErr <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			fatal("http: server stopped", err)
+		}
+	case <-ctx.Done():
 	}
+	stop()
+
+	slog.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownBudget)
+	defer cancel()
+
+	// Order matters: stop the HTTP server first so no handler can Enqueue
+	// after the queue stops, then drain the queue, then close the pool.
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		slog.Error("http: shutdown incomplete", "error", err.Error())
+	}
+	if err := catalogQueue.Shutdown(shutdownCtx); err != nil {
+		slog.Error("queue: shutdown incomplete", "error", err.Error())
+	}
+	pool.Close()
+	slog.Info("shutdown complete")
 }
+
+// shutdownBudget bounds graceful shutdown (HTTP drain, queue drain, pool
+// close), staying inside Fly's default kill timeout.
+const shutdownBudget = 25 * time.Second
 
 // fatal logs a boot/serve failure at Error level and exits with status 1.
 func fatal(msg string, err error) {

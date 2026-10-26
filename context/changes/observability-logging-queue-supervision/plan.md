@@ -322,26 +322,26 @@ No schema migration. Deploy note for the later `prod-deploy` change: set Fly `ki
 
 #### Automated
 
-- [x] 2.1 go build and go vet pass
-- [x] 2.2 Catalog logging tests pass
-- [x] 2.3 internal/auth tests pass
-- [x] 2.4 internal/db tests pass
-- [x] 2.5 Full suite passes
-- [x] 2.6 No bare 500 writes remain in internal/
+- [x] 2.1 go build and go vet pass — 1623fbc
+- [x] 2.2 Catalog logging tests pass — 1623fbc
+- [x] 2.3 internal/auth tests pass — 1623fbc
+- [x] 2.4 internal/db tests pass — 1623fbc
+- [x] 2.5 Full suite passes — 1623fbc
+- [x] 2.6 No bare 500 writes remain in internal/ — 1623fbc
 
 #### Manual
 
-- [x] 2.7 With Postgres stopped, /api/projects returns the same 500 and logs one Error line with route, request_id, role, user and pgx cause; /healthz 503 logs the ping error
+- [x] 2.7 With Postgres stopped, /api/projects returns the same 500 and logs one Error line with route, request_id, role, user and pgx cause; /healthz 503 logs the ping error — 1623fbc
 
 ### Phase 3: Queue supervision & lifecycle
 
 #### Automated
 
-- [ ] 3.1 go build and go vet pass
-- [ ] 3.2 Queue and ListStuckLibraries tests pass
-- [ ] 3.3 Full suite passes
-- [ ] 3.4 No discarded queue store errors remain
+- [x] 3.1 go build and go vet pass
+- [x] 3.2 Queue and ListStuckLibraries tests pass
+- [x] 3.3 Full suite passes
+- [x] 3.4 No discarded queue store errors remain
 
 #### Manual
 
-- [ ] 3.5 SIGTERM mid-batch logs shutting down, queue shutdown and shutdown complete with exit 0; restart after threshold logs boot sweep with requeued > 0 and leftovers settle
+- [x] 3.5 SIGTERM mid-batch logs shutting down, queue shutdown and shutdown complete with exit 0; restart after threshold logs boot sweep with requeued > 0 and leftovers settle

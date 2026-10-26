@@ -564,3 +564,70 @@ func TestListLibraries_StrategicFilter(t *testing.T) {
 		t.Fatalf("expected both libraries with no Strategic filter, got %+v", allLibs)
 	}
 }
+
+func TestStore_ListStuckLibraries_RespectsAgeAndStatus(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	const batchID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"
+	type row struct {
+		name, status string
+		age          time.Duration
+	}
+	rows := []row{
+		{"old-pending", "pending", 20 * time.Minute},
+		{"old-processing", "processing", 25 * time.Minute},
+		{"old-categorized", "categorized", 20 * time.Minute},
+		{"new-pending", "pending", time.Minute},
+		{"new-processing", "processing", time.Minute},
+		{"new-categorized", "categorized", time.Minute},
+	}
+	newLibs := make([]NewLibrary, 0, len(rows))
+	for _, r := range rows {
+		newLibs = append(newLibs, NewLibrary{Purl: "pkg:maven/com.example/" + r.name + "@1.0.0", Name: r.name, Ecosystem: "maven"})
+	}
+	if err := store.CreateLibraries(ctx, batchID, newLibs); err != nil {
+		t.Fatalf("CreateLibraries failed: %v", err)
+	}
+	libs, err := store.ListLibraries(ctx, LibraryFilter{BatchID: batchID})
+	if err != nil {
+		t.Fatalf("ListLibraries failed: %v", err)
+	}
+	idByName := map[string]string{}
+	for _, l := range libs {
+		idByName[l.Name] = l.ID
+	}
+	for _, r := range rows {
+		if _, err := pool.Exec(ctx,
+			`UPDATE libraries SET status = $1, updated_at = now() - make_interval(secs => $2) WHERE id = $3`,
+			r.status, r.age.Seconds(), idByName[r.name]); err != nil {
+			t.Fatalf("aging %s failed: %v", r.name, err)
+		}
+	}
+
+	stuck, err := store.ListStuckLibraries(ctx, 10*time.Minute)
+	if err != nil {
+		t.Fatalf("ListStuckLibraries failed: %v", err)
+	}
+	got := make([]string, 0, len(stuck))
+	for _, l := range stuck {
+		got = append(got, l.Name)
+	}
+	// Oldest first.
+	want := []string{"old-processing", "old-pending"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("ListStuckLibraries = %v, want %v", got, want)
+	}
+
+	empty, err := store.ListStuckLibraries(ctx, time.Hour)
+	if err != nil {
+		t.Fatalf("ListStuckLibraries failed: %v", err)
+	}
+	if empty == nil {
+		t.Fatalf("ListStuckLibraries returned nil on empty result, want an empty slice")
+	}
+	if len(empty) != 0 {
+		t.Fatalf("ListStuckLibraries(1h) = %d rows, want 0", len(empty))
+	}
+}

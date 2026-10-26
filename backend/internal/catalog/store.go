@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
@@ -211,6 +212,39 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("catalog: failed to list libraries: %w", err)
+	}
+
+	return libraries, nil
+}
+
+// ListStuckLibraries returns libraries still "pending" or "processing"
+// whose updated_at is older than olderThan, oldest first. These are rows
+// orphaned by a restart, deploy, panic or failed status write. The result is
+// never nil (an empty result is an empty slice).
+func (s *Store) ListStuckLibraries(ctx context.Context, olderThan time.Duration) ([]Library, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, purl, name, ecosystem, github_repo, status, upload_batch_id, error_detail
+		 FROM libraries
+		 WHERE status IN ('pending', 'processing')
+		   AND updated_at < now() - make_interval(secs => $1)
+		 ORDER BY updated_at`,
+		olderThan.Seconds(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: failed to list stuck libraries: %w", err)
+	}
+	defer rows.Close()
+
+	libraries := make([]Library, 0)
+	for rows.Next() {
+		var l Library
+		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID, &l.ErrorDetail); err != nil {
+			return nil, fmt.Errorf("catalog: failed to scan stuck library: %w", err)
+		}
+		libraries = append(libraries, l)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("catalog: failed to list stuck libraries: %w", err)
 	}
 
 	return libraries, nil
