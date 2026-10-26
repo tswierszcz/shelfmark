@@ -9,7 +9,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/auth/authtest"
 )
 
 // assertNoNullArrays checks the raw JSON contract of a response body: the
@@ -73,6 +76,19 @@ func assertEmptyArrayField(t *testing.T, body []byte, field string) {
 	}
 }
 
+// resetCatalogTables empties the library and project tables (and, through
+// CASCADE, their attachments and strategic marks) so subtests sharing one
+// Postgres container start from the same state. The seeded categories table
+// is kept.
+func resetCatalogTables(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(),
+		`TRUNCATE libraries, library_categories, strategic_marks, projects, project_libraries CASCADE`,
+	); err != nil {
+		t.Fatalf("failed to reset catalog tables: %v", err)
+	}
+}
+
 // createUncategorizedLibrary inserts one library with no categories and no
 // strategic marks.
 func createUncategorizedLibrary(t *testing.T, store *Store) {
@@ -89,6 +105,9 @@ func createUncategorizedLibrary(t *testing.T, store *Store) {
 func assertLibraryListContract(t *testing.T, newHandler func(*Store) http.HandlerFunc, path string) {
 	t.Helper()
 
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
 	get := func(t *testing.T, store *Store) []byte {
 		t.Helper()
 		req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -101,7 +120,7 @@ func assertLibraryListContract(t *testing.T, newHandler func(*Store) http.Handle
 	}
 
 	t.Run("empty", func(t *testing.T) {
-		store := NewStore(startTestPostgres(t))
+		resetCatalogTables(t, pool)
 
 		body := get(t, store)
 		if string(body) != "[]\n" {
@@ -110,7 +129,7 @@ func assertLibraryListContract(t *testing.T, newHandler func(*Store) http.Handle
 	})
 
 	t.Run("uncategorized", func(t *testing.T) {
-		store := NewStore(startTestPostgres(t))
+		resetCatalogTables(t, pool)
 		createUncategorizedLibrary(t, store)
 
 		body := get(t, store)
@@ -166,9 +185,12 @@ func TestUploadHandler_NothingSkipped_ReturnsEmptySkippedArray(t *testing.T) {
 		{"sbom without components", "sbom", "sbom.json", `{"bomFormat":"CycloneDX","specVersion":"1.5","version":1}`},
 	}
 
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			store := NewStore(startTestPostgres(t))
+			resetCatalogTables(t, pool)
 
 			req := newMultipartUploadRequest(t, tc.kind, tc.filename, []byte(tc.content))
 			rec := httptest.NewRecorder()
@@ -187,7 +209,7 @@ func TestProjectUploadHandler_NothingSkipped_ReturnsEmptySkippedArray(t *testing
 	store := NewStore(startTestPostgres(t))
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	handler := auth.RequireRole(auth.RoleArchitect)(ProjectUploadHandler(store, &recordingEnqueuer{}))
 	req := newProjectUploadRequest(t, "My Project", "sbom.json", []byte(projectFixtureSBOM))

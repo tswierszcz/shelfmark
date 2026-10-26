@@ -841,6 +841,76 @@ func TestMarkStrategic_InterleavedMarksRespectCap(t *testing.T) {
 	}
 }
 
+// holdStrategicLock takes MarkStrategic's advisory lock for (categoryID,
+// ecosystem) in a separate pool transaction and keeps it open. The returned
+// release func rolls the holder back (idempotent; also registered with
+// t.Cleanup).
+func holdStrategicLock(t *testing.T, pool *pgxpool.Pool, categoryID, ecosystem string) (release func()) {
+	t.Helper()
+	ctx := context.Background()
+
+	holder, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin lock holder failed: %v", err)
+	}
+	if _, err := holder.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1 || ':' || $2, 0))`,
+		categoryID, ecosystem,
+	); err != nil {
+		holder.Rollback(ctx)
+		t.Fatalf("lock holder failed to take advisory lock: %v", err)
+	}
+
+	var once sync.Once
+	release = func() {
+		once.Do(func() { holder.Rollback(ctx) })
+	}
+	t.Cleanup(release)
+	return release
+}
+
+// setStrategicLockTimeout overrides the package-level lock timeout for one
+// test. Tests that call it must not use t.Parallel.
+func setStrategicLockTimeout(t *testing.T, value string) {
+	t.Helper()
+	previous := strategicLockTimeout
+	t.Cleanup(func() { strategicLockTimeout = previous })
+	strategicLockTimeout = value
+}
+
+func TestMarkStrategic_LockTimeoutReturnsBusy(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	setStrategicLockTimeout(t, "200ms")
+
+	categoryID := newTestCategory(t, pool, "lock-timeout")
+	libs := newTestLibraries(t, store, pool, "maven", "lock-timeout", 1)
+	release := holdStrategicLock(t, pool, categoryID, "maven")
+
+	// The context deadline only keeps a regression from hanging the suite;
+	// the lock timeout must fire well before it.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	start := time.Now()
+	err := store.MarkStrategic(ctx, libs[0].ID, categoryID, "critical dependency", "alice")
+	elapsed := time.Since(start)
+	if !errors.Is(err, ErrStrategicMarkBusy) {
+		t.Fatalf("expected ErrStrategicMarkBusy while the lock is held, got %v (after %s)", err, elapsed)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("expected MarkStrategic to give up within ~1s, took %s", elapsed)
+	}
+
+	release()
+	if err := store.MarkStrategic(context.Background(), libs[0].ID, categoryID, "critical dependency", "alice"); err != nil {
+		t.Fatalf("expected MarkStrategic to succeed once the lock is released, got %v", err)
+	}
+	if got := countActiveStrategicMarks(t, pool, categoryID, "maven"); got != 1 {
+		t.Fatalf("expected 1 active mark, got %d", got)
+	}
+}
+
 func TestMarkStrategic_ConcurrentMarksNeverExceedCap(t *testing.T) {
 	pool := startTestPostgres(t)
 	store := NewStore(pool)

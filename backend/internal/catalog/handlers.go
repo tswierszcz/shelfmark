@@ -375,6 +375,10 @@ func MarkStrategicHandler(store *Store) http.HandlerFunc {
 				writeCatalogError(w, r, http.StatusConflict, "already 2 strategic libraries marked for this category and ecosystem", err)
 				return
 			}
+			if errors.Is(err, ErrStrategicMarkBusy) {
+				writeCatalogError(w, r, http.StatusServiceUnavailable, "strategic marking is busy, please retry", err, "library_id", libraryID, "category_id", categoryID)
+				return
+			}
 			writeCatalogError(w, r, http.StatusInternalServerError, "failed to mark strategic", err, "library_id", libraryID, "category_id", categoryID)
 			return
 		}

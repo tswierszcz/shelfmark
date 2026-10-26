@@ -9,8 +9,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/auth/authtest"
 	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 	"github.com/tswierszcz/shelfmark/backend/internal/obs/obstest"
 )
@@ -440,23 +442,6 @@ func TestAttachCategoryHandler_AttachesAndRejectsMalformedBody(t *testing.T) {
 	}
 }
 
-// sessionCookie issues a signed session cookie for role via auth.IssueSession,
-// following auth/middleware_test.go's issueTestSession pattern, so handler
-// tests can exercise auth.RequireRole-wrapped routes without a real login.
-func sessionCookie(t *testing.T, email string, role auth.Role) *http.Cookie {
-	t.Helper()
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	if err := auth.IssueSession(rec, req, email, role); err != nil {
-		t.Fatalf("IssueSession: %v", err)
-	}
-	cookies := rec.Result().Cookies()
-	if len(cookies) == 0 {
-		t.Fatalf("IssueSession did not set a cookie")
-	}
-	return cookies[0]
-}
-
 // setUpLibraryWithCategory uploads the fixture SBOM and returns one created
 // library plus one seeded category, for tests that need a (library,
 // category) pair to mark strategic.
@@ -563,7 +548,7 @@ func TestMarkAndUnmarkStrategicHandler_RoundTrip(t *testing.T) {
 	lib, category := setUpLibraryWithCategory(t, store)
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	markHandler := auth.RequireRole(auth.RoleArchitect)(MarkStrategicHandler(store))
 	unmarkHandler := auth.RequireRole(auth.RoleArchitect)(UnmarkStrategicHandler(store))
@@ -657,7 +642,7 @@ func TestMarkStrategicHandler_RoleGating(t *testing.T) {
 	body := []byte(`{"justification":"core dependency"}`)
 
 	// A Viewer session is rejected with 403.
-	viewerCookie := sessionCookie(t, "viewer@example.com", auth.RoleViewer)
+	viewerCookie := authtest.SessionCookie(t, "viewer@example.com", auth.RoleViewer)
 	viewerReq := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
 	viewerReq.SetPathValue("libraryID", lib.ID)
 	viewerReq.SetPathValue("categoryID", category.ID)
@@ -807,7 +792,7 @@ func TestMarkStrategicHandler_ThirdMarkReturns409(t *testing.T) {
 	libs := newTestLibraries(t, store, pool, "maven", "handler-cap", 3)
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 	markHandler := auth.RequireRole(auth.RoleArchitect)(MarkStrategicHandler(store))
 
 	mark := func(lib Library) *httptest.ResponseRecorder {
@@ -837,5 +822,42 @@ func TestMarkStrategicHandler_ThirdMarkReturns409(t *testing.T) {
 	}
 	if got := countActiveStrategicMarks(t, pool, categoryID, "maven"); got != 2 {
 		t.Fatalf("expected 2 active marks after rejected third mark, got %d", got)
+	}
+}
+
+func TestMarkStrategicHandler_BusyReturns503(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	setStrategicLockTimeout(t, "200ms")
+
+	categoryID := newTestCategory(t, pool, "handler-busy")
+	libs := newTestLibraries(t, store, pool, "maven", "handler-busy", 1)
+	holdStrategicLock(t, pool, categoryID, "maven")
+
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	markHandler := auth.RequireRole(auth.RoleArchitect)(MarkStrategicHandler(store))
+
+	// The context deadline only keeps a regression from hanging the suite;
+	// the lock timeout must fire well before it.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	path := "/api/organization/libraries/" + libs[0].ID + "/categories/" + categoryID + "/strategic"
+	req := httptest.NewRequestWithContext(ctx, http.MethodPost, path, bytes.NewReader([]byte(`{"justification":"core dependency"}`)))
+	req.SetPathValue("libraryID", libs[0].ID)
+	req.SetPathValue("categoryID", categoryID)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	markHandler(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 while the strategic lock is held, got %d: %s", rec.Code, rec.Body.String())
+	}
+	want := `{"error":"strategic marking is busy, please retry"}`
+	if got := strings.TrimSpace(rec.Body.String()); got != want {
+		t.Fatalf("unexpected 503 body:\n got: %s\nwant: %s", got, want)
+	}
+	if got := countActiveStrategicMarks(t, pool, categoryID, "maven"); got != 0 {
+		t.Fatalf("expected no active marks after a busy rejection, got %d", got)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/auth/authtest"
 )
 
 // projectFixtureSBOM is a project SBOM with a resolvable dependency graph:
@@ -142,7 +143,7 @@ func TestProjectUploadHandler_NewProjectIngestsAndRecordsMembership(t *testing.T
 	queue := &recordingEnqueuer{}
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	resp := doProjectUpload(t, store, queue, cookie, "My Project", "sbom.json", []byte(projectFixtureSBOM))
 
@@ -203,7 +204,7 @@ func TestProjectUploadHandler_OversizedFileReturns400(t *testing.T) {
 	queue := &recordingEnqueuer{}
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	handler := auth.RequireRole(auth.RoleArchitect)(ProjectUploadHandler(store, queue))
 
@@ -245,7 +246,7 @@ func TestProjectUploadHandler_MissingProjectNameReturns400(t *testing.T) {
 	queue := &recordingEnqueuer{}
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	handler := auth.RequireRole(auth.RoleArchitect)(ProjectUploadHandler(store, queue))
 
@@ -265,7 +266,7 @@ func TestProjectUploadHandler_ReuploadReplacesPriorMembership(t *testing.T) {
 	queue := &recordingEnqueuer{}
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	first := doProjectUpload(t, store, queue, cookie, "Reupload Project", "sbom.json", []byte(projectFixtureSBOM))
 
@@ -352,7 +353,7 @@ func TestProjectUploadHandler_PurlAlreadyInCatalogUnderDifferentBatchIsReused(t 
 	}
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	resp := doProjectUpload(t, store, queue, cookie, "Reuse Project", "sbom.json", []byte(projectFixtureSBOMSingleDirect))
 
@@ -382,7 +383,7 @@ func TestProjectUploadHandler_UnknownPurlTriggersEnqueue(t *testing.T) {
 	queue := &recordingEnqueuer{}
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	doProjectUpload(t, store, queue, cookie, "Unknown Purl Project", "sbom.json", []byte(projectFixtureSBOMSingleDirect))
 
@@ -405,7 +406,7 @@ func setUpProjectReportFixture(t *testing.T, store *Store) (projectID string, di
 	t.Helper()
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 	queue := &recordingEnqueuer{}
 
 	resp := doProjectUpload(t, store, queue, cookie, "Report Fixture Project", "sbom.json", []byte(projectFixtureSBOM))
@@ -557,7 +558,7 @@ func TestListProjectsHandler_ReturnsUploadedProjects(t *testing.T) {
 	queue := &recordingEnqueuer{}
 
 	t.Setenv("SESSION_SECRET", "test-secret")
-	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
 
 	resp := doProjectUpload(t, store, queue, cookie, "List Me Project", "sbom.json", []byte(projectFixtureSBOMSingleDirect))
 

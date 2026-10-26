@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/auth/authtest"
 )
 
 // expectedRoles is the role regression lock for every registered route,
@@ -100,7 +101,7 @@ func TestRoutes_DeniesDisallowedCallers(t *testing.T) {
 		if c.role == "" {
 			continue
 		}
-		cookies[c.role] = mintSessionCookie(t, c.role)
+		cookies[c.role] = authtest.SessionCookie(t, string(c.role)+"@example.com", c.role)
 	}
 
 	for key, allowed := range expectedRoles {
@@ -140,22 +141,4 @@ func TestRoutes_DeniesDisallowedCallers(t *testing.T) {
 			})
 		}
 	}
-}
-
-// mintSessionCookie issues a real signed session for role via auth.IssueSession
-// and returns the resulting cookie. SESSION_SECRET must already be set.
-func mintSessionCookie(t *testing.T, role auth.Role) *http.Cookie {
-	t.Helper()
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/login", nil)
-	if err := auth.IssueSession(rec, req, string(role)+"@example.com", role); err != nil {
-		t.Fatalf("IssueSession(%s): %v", role, err)
-	}
-	for _, c := range rec.Result().Cookies() {
-		if c.Name == auth.SessionCookieName {
-			return c
-		}
-	}
-	t.Fatalf("IssueSession(%s) set no %s cookie", role, auth.SessionCookieName)
-	return nil
 }

@@ -30,6 +30,11 @@ var ErrInvalidReference = errors.New("catalog: library or category does not exis
 // FR-007's cap of two strategic libraries per category/ecosystem.
 var ErrStrategicCapReached = errors.New("catalog: strategic cap reached for this category and ecosystem")
 
+// ErrStrategicMarkBusy indicates MarkStrategic gave up waiting for the
+// per-(category, ecosystem) advisory lock after strategicLockTimeout because
+// another mark in the same pair held it. The caller may retry.
+var ErrStrategicMarkBusy = errors.New("catalog: strategic marking is busy, please retry")
+
 // Category is one entry in the curated taxonomy seeded by migration
 // 0002_catalog_schema.
 type Category struct {
@@ -365,7 +370,13 @@ func (s *Store) BatchProgress(ctx context.Context, batchID string) (BatchProgres
 // afterCapCheck is a test seam: when non-nil, MarkStrategic calls it right
 // after the cap check passes and before the insert, so tests can hold
 // transactions inside the check-then-insert window. Always nil in production.
+// Package-level state: tests that set it must not use t.Parallel.
 var afterCapCheck func()
+
+// strategicLockTimeout bounds how long MarkStrategic waits for the strategic
+// cap advisory lock (a Postgres lock_timeout value). Package var so tests can
+// shorten it; tests that set it must not use t.Parallel.
+var strategicLockTimeout = "5s"
 
 // MarkStrategic upserts an active strategic designation of libraryID against
 // categoryID, overwriting the recorded justification/markedBy/markedAt on a
@@ -385,13 +396,27 @@ func (s *Store) MarkStrategic(ctx context.Context, libraryID, categoryID, justif
 		return fmt.Errorf("catalog: failed to look up library ecosystem: %w", err)
 	}
 
+	// Bound the lock wait so a slow holder can't pin pool connections
+	// indefinitely; SET LOCAL lasts only until this transaction ends.
+	// strategicLockTimeout is a package constant-in-practice, not user input.
+	if _, err := tx.Exec(ctx, fmt.Sprintf(`SET LOCAL lock_timeout = '%s'`, strategicLockTimeout)); err != nil {
+		return fmt.Errorf("catalog: failed to set strategic lock timeout: %w", err)
+	}
+
 	// Serialize check-then-insert per (category, ecosystem): at READ
 	// COMMITTED two concurrent marks would otherwise both count below the
 	// cap and both insert. The xact lock is released on commit/rollback.
+	// The key uses the ecosystem read above, before locking; that is correct
+	// only while libraries.ecosystem is never updated (no UPDATE of it exists
+	// today). If it ever becomes mutable, re-read it under the lock.
 	if _, err := tx.Exec(ctx,
 		`SELECT pg_advisory_xact_lock(hashtextextended($1 || ':' || $2, 0))`,
 		categoryID, ecosystem,
 	); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.LockNotAvailable {
+			return fmt.Errorf("catalog: timed out waiting for strategic cap lock: %w", ErrStrategicMarkBusy)
+		}
 		return fmt.Errorf("catalog: failed to lock strategic cap: %w", err)
 	}
 
