@@ -3,13 +3,13 @@ project: "Shelfmark"
 version: 1
 status: draft
 created: 2026-10-15
-updated: 2026-10-19
+updated: 2026-10-21
 prd_version: 1
 main_goal: speed
 top_blocker: time
 milestone_id: first-usable-redundancy-report
 milestone_seq: 1
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: Shelfmark
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-1: First usable redundancy report** — Status: open
+**M-1: First usable redundancy report** — Status: done
 
 - **Intent:** Prove the core value loop — a seeded, categorized library catalog plus one real project SBOM produces a redundancy report an architect can act on.
 - **Source materials:** `context/foundation/prd.md` (v1)
@@ -160,7 +160,7 @@ This table is the clean handoff to Jira/Linear or any MCP-backed backlog.
 
 ## Milestone History
 
-(Empty — this is the first milestone.)
+- **M-1: First usable redundancy report** (`first-usable-redundancy-report`) — closed 2026-10-21. Proved the core value loop: a seeded, categorized library catalog plus an uploaded project SBOM produces a redundancy report an architect can act on (F-01, F-02, S-01, S-02, S-03 all done).
 
 ## Done
 
