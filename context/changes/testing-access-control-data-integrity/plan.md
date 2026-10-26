@@ -289,17 +289,17 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Automated
 
-- [x] 3.1 go build and go vet pass
-- [x] 3.2 Cap contract, edge and concurrency tests pass (4 run)
-- [x] 3.3 Concurrency test passes under -race three times
-- [x] 3.4 Full suite passes
+- [x] 3.1 go build and go vet pass — aabdac3
+- [x] 3.2 Cap contract, edge and concurrency tests pass (4 run) — aabdac3
+- [x] 3.3 Concurrency test passes under -race three times — aabdac3
+- [x] 3.4 Full suite passes — aabdac3
 
 ### Phase 4: Docs — PRD and test-plan cookbook
 
 #### Automated
 
-- [ ] 4.1 PRD Admin row no longer lists project SBOM upload
-- [ ] 4.2 test-plan §6.2 documents all three patterns
+- [x] 4.1 PRD Admin row no longer lists project SBOM upload
+- [x] 4.2 test-plan §6.2 documents all three patterns
 
 #### Manual
 
