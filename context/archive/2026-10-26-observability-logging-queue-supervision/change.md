@@ -1,10 +1,10 @@
 ---
 change_id: observability-logging-queue-supervision
 title: Observability logging contract and queue supervision
-status: impl_reviewed
+status: archived
 created: 2026-10-26
 updated: 2026-10-26
-archived_at: null
+archived_at: 2026-10-26T18:44:20Z
 ---
 
 ## Notes
