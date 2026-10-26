@@ -798,3 +798,44 @@ func TestCatalogHandler_4xx_DoesNotLog(t *testing.T) {
 		t.Fatalf("expected no Error line for a 4xx, got %v", lines)
 	}
 }
+
+func TestMarkStrategicHandler_ThirdMarkReturns409(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	categoryID := newTestCategory(t, pool, "handler-cap")
+	libs := newTestLibraries(t, store, pool, "maven", "handler-cap", 3)
+
+	t.Setenv("SESSION_SECRET", "test-secret")
+	cookie := sessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	markHandler := auth.RequireRole(auth.RoleArchitect)(MarkStrategicHandler(store))
+
+	mark := func(lib Library) *httptest.ResponseRecorder {
+		path := "/api/organization/libraries/" + lib.ID + "/categories/" + categoryID + "/strategic"
+		req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(`{"justification":"core dependency"}`)))
+		req.SetPathValue("libraryID", lib.ID)
+		req.SetPathValue("categoryID", categoryID)
+		req.AddCookie(cookie)
+		rec := httptest.NewRecorder()
+		markHandler(rec, req)
+		return rec
+	}
+
+	for _, lib := range libs[:2] {
+		if rec := mark(lib); rec.Code != http.StatusNoContent {
+			t.Fatalf("expected 204 for mark of %s, got %d: %s", lib.Name, rec.Code, rec.Body.String())
+		}
+	}
+
+	rec := mark(libs[2])
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409 for third mark, got %d: %s", rec.Code, rec.Body.String())
+	}
+	want := `{"error":"already 2 strategic libraries marked for this category and ecosystem"}`
+	if got := strings.TrimSpace(rec.Body.String()); got != want {
+		t.Fatalf("unexpected 409 body:\n got: %s\nwant: %s", got, want)
+	}
+	if got := countActiveStrategicMarks(t, pool, categoryID, "maven"); got != 2 {
+		t.Fatalf("expected 2 active marks after rejected third mark, got %d", got)
+	}
+}

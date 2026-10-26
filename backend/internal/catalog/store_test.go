@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"sync"
 	"testing"
 	"time"
 
@@ -629,5 +630,260 @@ func TestStore_ListStuckLibraries_RespectsAgeAndStatus(t *testing.T) {
 	}
 	if len(empty) != 0 {
 		t.Fatalf("ListStuckLibraries(1h) = %d rows, want 0", len(empty))
+	}
+}
+
+// newTestCategory inserts a fresh category so a test owns an empty
+// (category, ecosystem) pair, independent of the seeded taxonomy.
+func newTestCategory(t *testing.T, pool *pgxpool.Pool, name string) string {
+	t.Helper()
+	var id string
+	if err := pool.QueryRow(context.Background(),
+		`INSERT INTO categories (name) VALUES ($1) RETURNING id`, name,
+	).Scan(&id); err != nil {
+		t.Fatalf("insert category %q failed: %v", name, err)
+	}
+	return id
+}
+
+// newTestLibraries creates n libraries of one ecosystem under a fresh upload
+// batch and returns them in creation order.
+func newTestLibraries(t *testing.T, store *Store, pool *pgxpool.Pool, ecosystem, prefix string, n int) []Library {
+	t.Helper()
+	ctx := context.Background()
+
+	var batchID string
+	if err := pool.QueryRow(ctx, `SELECT gen_random_uuid()::text`).Scan(&batchID); err != nil {
+		t.Fatalf("generate batch id failed: %v", err)
+	}
+
+	newLibs := make([]NewLibrary, n)
+	for i := range newLibs {
+		name := fmt.Sprintf("%s-%d", prefix, i)
+		newLibs[i] = NewLibrary{Purl: fmt.Sprintf("pkg:%s/com.example/%s@1.0.0", ecosystem, name), Name: name, Ecosystem: ecosystem}
+	}
+	if err := store.CreateLibraries(ctx, batchID, newLibs); err != nil {
+		t.Fatalf("CreateLibraries failed: %v", err)
+	}
+
+	listed, err := store.ListLibraries(ctx, LibraryFilter{BatchID: batchID})
+	if err != nil {
+		t.Fatalf("ListLibraries failed: %v", err)
+	}
+	byPurl := map[string]Library{}
+	for _, l := range listed {
+		byPurl[l.Purl] = l
+	}
+	libs := make([]Library, n)
+	for i, nl := range newLibs {
+		l, ok := byPurl[nl.Purl]
+		if !ok {
+			t.Fatalf("library %q not created", nl.Purl)
+		}
+		libs[i] = l
+	}
+	return libs
+}
+
+// countActiveStrategicMarks counts active marks in a (category, ecosystem)
+// pair directly in SQL, independent of MarkStrategic's own check.
+func countActiveStrategicMarks(t *testing.T, pool *pgxpool.Pool, categoryID, ecosystem string) int {
+	t.Helper()
+	var count int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM strategic_marks sm JOIN libraries l ON l.id = sm.library_id
+		 WHERE sm.active AND sm.category_id = $1 AND l.ecosystem = $2`,
+		categoryID, ecosystem,
+	).Scan(&count); err != nil {
+		t.Fatalf("count active strategic marks failed: %v", err)
+	}
+	return count
+}
+
+func TestMarkStrategic_CapEdges(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	mark := func(t *testing.T, lib Library, categoryID string) error {
+		t.Helper()
+		return store.MarkStrategic(ctx, lib.ID, categoryID, "critical dependency", "alice")
+	}
+	mustMark := func(t *testing.T, lib Library, categoryID string) {
+		t.Helper()
+		if err := mark(t, lib, categoryID); err != nil {
+			t.Fatalf("MarkStrategic(%s) failed: %v", lib.Name, err)
+		}
+	}
+
+	t.Run("other ecosystem in same category at cap is allowed", func(t *testing.T) {
+		categoryID := newTestCategory(t, pool, "edge-other-ecosystem")
+		maven := newTestLibraries(t, store, pool, "maven", "edge-eco-maven", 2)
+		npm := newTestLibraries(t, store, pool, "npm", "edge-eco-npm", 1)
+		mustMark(t, maven[0], categoryID)
+		mustMark(t, maven[1], categoryID)
+
+		if err := mark(t, npm[0], categoryID); err != nil {
+			t.Fatalf("expected npm mark in a maven-capped category to succeed, got %v", err)
+		}
+	})
+
+	t.Run("unmarking one of two frees a slot for a new library", func(t *testing.T) {
+		categoryID := newTestCategory(t, pool, "edge-unmark-frees")
+		libs := newTestLibraries(t, store, pool, "maven", "edge-unmark", 3)
+		mustMark(t, libs[0], categoryID)
+		mustMark(t, libs[1], categoryID)
+		if err := store.UnmarkStrategic(ctx, libs[0].ID, categoryID, "no longer critical", "bob"); err != nil {
+			t.Fatalf("UnmarkStrategic failed: %v", err)
+		}
+
+		if err := mark(t, libs[2], categoryID); err != nil {
+			t.Fatalf("expected third library to be allowed after an unmark, got %v", err)
+		}
+		if got := countActiveStrategicMarks(t, pool, categoryID, "maven"); got != 2 {
+			t.Fatalf("expected 2 active marks, got %d", got)
+		}
+	})
+
+	t.Run("re-activating an unmarked library while two others are active is rejected", func(t *testing.T) {
+		categoryID := newTestCategory(t, pool, "edge-reactivate")
+		libs := newTestLibraries(t, store, pool, "maven", "edge-reactivate", 3)
+		mustMark(t, libs[0], categoryID)
+		if err := store.UnmarkStrategic(ctx, libs[0].ID, categoryID, "no longer critical", "bob"); err != nil {
+			t.Fatalf("UnmarkStrategic failed: %v", err)
+		}
+		mustMark(t, libs[1], categoryID)
+		mustMark(t, libs[2], categoryID)
+
+		if err := mark(t, libs[0], categoryID); !errors.Is(err, ErrStrategicCapReached) {
+			t.Fatalf("expected re-activation at cap to return ErrStrategicCapReached, got %v", err)
+		}
+		if got := countActiveStrategicMarks(t, pool, categoryID, "maven"); got != 2 {
+			t.Fatalf("expected 2 active marks, got %d", got)
+		}
+	})
+
+	t.Run("same library marked in a second category is allowed", func(t *testing.T) {
+		firstCategoryID := newTestCategory(t, pool, "edge-two-categories-a")
+		secondCategoryID := newTestCategory(t, pool, "edge-two-categories-b")
+		libs := newTestLibraries(t, store, pool, "maven", "edge-two-categories", 2)
+		mustMark(t, libs[0], firstCategoryID)
+		mustMark(t, libs[1], firstCategoryID)
+
+		if err := mark(t, libs[0], secondCategoryID); err != nil {
+			t.Fatalf("expected marking the same library in a second category to succeed, got %v", err)
+		}
+	})
+}
+
+func TestMarkStrategic_InterleavedMarksRespectCap(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	categoryID := newTestCategory(t, pool, "interleaved-cap")
+	libs := newTestLibraries(t, store, pool, "maven", "interleaved-cap", 3)
+	if err := store.MarkStrategic(ctx, libs[0].ID, categoryID, "critical dependency", "alice"); err != nil {
+		t.Fatalf("initial MarkStrategic failed: %v", err)
+	}
+
+	// Each transaction that passes the cap check waits here until a second
+	// one has also passed it, or 2 s elapse. The timeout matters once the
+	// check is serialized: the lock holder must not wait forever for a
+	// transaction that is blocked on its lock.
+	var (
+		mu       sync.Mutex
+		arrivals int
+	)
+	bothArrived := make(chan struct{})
+	previous := afterCapCheck
+	t.Cleanup(func() { afterCapCheck = previous })
+	afterCapCheck = func() {
+		mu.Lock()
+		arrivals++
+		if arrivals == 2 {
+			close(bothArrived)
+		}
+		mu.Unlock()
+		select {
+		case <-bothArrived:
+		case <-time.After(2 * time.Second):
+		}
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i, lib := range libs[1:] {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs[i] = store.MarkStrategic(ctx, lib.ID, categoryID, "critical dependency", "bob")
+		}()
+	}
+	wg.Wait()
+
+	var succeeded, capped int
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			succeeded++
+		case errors.Is(err, ErrStrategicCapReached):
+			capped++
+		default:
+			t.Fatalf("MarkStrategic(goroutine %d) returned unexpected error: %v", i, err)
+		}
+	}
+	if succeeded != 1 || capped != 1 {
+		t.Errorf("expected exactly 1 success and 1 ErrStrategicCapReached, got %d successes and %d rejections", succeeded, capped)
+	}
+	if got := countActiveStrategicMarks(t, pool, categoryID, "maven"); got != 2 {
+		t.Errorf("expected 2 active marks, got %d", got)
+	}
+}
+
+func TestMarkStrategic_ConcurrentMarksNeverExceedCap(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	const (
+		iterations = 20
+		n          = 10
+	)
+	for iter := range iterations {
+		categoryID := newTestCategory(t, pool, fmt.Sprintf("concurrent-cap-%d", iter))
+		libs := newTestLibraries(t, store, pool, "maven", fmt.Sprintf("concurrent-cap-%d", iter), n)
+
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		errs := make([]error, n)
+		for i, lib := range libs {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				errs[i] = store.MarkStrategic(ctx, lib.ID, categoryID, "critical dependency", "alice")
+			}()
+		}
+		close(start)
+		wg.Wait()
+
+		capped := 0
+		for i, err := range errs {
+			switch {
+			case err == nil:
+			case errors.Is(err, ErrStrategicCapReached):
+				capped++
+			default:
+				t.Fatalf("iteration %d: MarkStrategic(goroutine %d) returned unexpected error: %v", iter, i, err)
+			}
+		}
+		active := countActiveStrategicMarks(t, pool, categoryID, "maven")
+		if active > 2 {
+			t.Fatalf("iteration %d: %d active marks exceed the cap of 2", iter, active)
+		}
+		if capped != n-2 {
+			t.Fatalf("iteration %d: expected %d ErrStrategicCapReached, got %d (active=%d)", iter, n-2, capped, active)
+		}
 	}
 }

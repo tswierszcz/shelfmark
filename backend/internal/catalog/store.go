@@ -362,6 +362,11 @@ func (s *Store) BatchProgress(ctx context.Context, batchID string) (BatchProgres
 	return progress, nil
 }
 
+// afterCapCheck is a test seam: when non-nil, MarkStrategic calls it right
+// after the cap check passes and before the insert, so tests can hold
+// transactions inside the check-then-insert window. Always nil in production.
+var afterCapCheck func()
+
 // MarkStrategic upserts an active strategic designation of libraryID against
 // categoryID, overwriting the recorded justification/markedBy/markedAt on a
 // repeat call rather than erroring, following AttachCategory's upsert idiom.
@@ -380,6 +385,16 @@ func (s *Store) MarkStrategic(ctx context.Context, libraryID, categoryID, justif
 		return fmt.Errorf("catalog: failed to look up library ecosystem: %w", err)
 	}
 
+	// Serialize check-then-insert per (category, ecosystem): at READ
+	// COMMITTED two concurrent marks would otherwise both count below the
+	// cap and both insert. The xact lock is released on commit/rollback.
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1 || ':' || $2, 0))`,
+		categoryID, ecosystem,
+	); err != nil {
+		return fmt.Errorf("catalog: failed to lock strategic cap: %w", err)
+	}
+
 	var count int
 	if err := tx.QueryRow(ctx,
 		`SELECT COUNT(DISTINCT sm.library_id)
@@ -392,6 +407,9 @@ func (s *Store) MarkStrategic(ctx context.Context, libraryID, categoryID, justif
 	}
 	if count >= 2 {
 		return ErrStrategicCapReached
+	}
+	if afterCapCheck != nil {
+		afterCapCheck()
 	}
 
 	if _, err := tx.Exec(ctx,

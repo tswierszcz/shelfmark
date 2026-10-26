@@ -277,9 +277,9 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Automated
 
-- [x] 2.1 go build and go vet pass
-- [x] 2.2 Raw-JSON contract tests pass (5 run)
-- [x] 2.3 Full suite passes
+- [x] 2.1 go build and go vet pass — 199542d
+- [x] 2.2 Raw-JSON contract tests pass (5 run) — 199542d
+- [x] 2.3 Full suite passes — 199542d
 
 #### Manual
 
@@ -289,10 +289,10 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Automated
 
-- [ ] 3.1 go build and go vet pass
-- [ ] 3.2 Cap contract, edge and concurrency tests pass (4 run)
-- [ ] 3.3 Concurrency test passes under -race three times
-- [ ] 3.4 Full suite passes
+- [x] 3.1 go build and go vet pass
+- [x] 3.2 Cap contract, edge and concurrency tests pass (4 run)
+- [x] 3.3 Concurrency test passes under -race three times
+- [x] 3.4 Full suite passes
 
 ### Phase 4: Docs — PRD and test-plan cookbook
 
