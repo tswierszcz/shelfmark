@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // defaultOpenRouterModel is used when OPENROUTER_MODEL is unset. This is a
@@ -114,11 +115,39 @@ func (c *OpenRouterClient) complete(ctx context.Context, prompt string) (string,
 	return decoded.Choices[0].Message.Content, nil
 }
 
+// sanitizeForPrompt neutralizes attacker-controlled strings (e.g.
+// purl-derived group/artifact/version/purl fields) before they're
+// interpolated into an LLM prompt. It replaces every Unicode
+// control-category rune (newlines, carriage returns, tabs, etc.) with a
+// single space, collapses repeated whitespace, trims the result, and
+// truncates to 200 runes (appending "..." when truncated) so a
+// maliciously huge field can't balloon the prompt.
+func sanitizeForPrompt(s string) string {
+	replaced := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
+
+	collapsed := strings.Join(strings.Fields(replaced), " ")
+
+	runes := []rune(collapsed)
+	if len(runes) > 200 {
+		return string(runes[:200]) + "..."
+	}
+	return collapsed
+}
+
 // FindRepo implements RepoFinder as an LLM-backed fallback for when
 // deps.dev has no mapping for the coordinate. found=false (err=nil) when
 // the model answers "unknown" or its answer contains no
 // github.com/owner/repo-shaped substring.
 func (c *OpenRouterClient) FindRepo(ctx context.Context, group, artifact, version string) (string, bool, error) {
+	group = sanitizeForPrompt(group)
+	artifact = sanitizeForPrompt(artifact)
+	version = sanitizeForPrompt(version)
+
 	prompt := fmt.Sprintf(
 		"What is the GitHub repository URL for the Maven library with group ID %q, artifact ID %q, version %q? "+
 			"Respond with ONLY the GitHub URL (e.g. https://github.com/owner/repo), or the literal word \"unknown\" if you don't know.",
@@ -151,6 +180,8 @@ func (c *OpenRouterClient) FindRepo(ctx context.Context, group, artifact, versio
 // valid JSON is treated as confident=false with an empty slice — a
 // confused model response is not a transport failure.
 func (c *OpenRouterClient) Categorize(ctx context.Context, purl string, githubTopics []string, taxonomy []string) ([]string, bool, error) {
+	purl = sanitizeForPrompt(purl)
+
 	prompt := fmt.Sprintf(
 		"A software library has the package URL %q and GitHub topics %v.\n"+
 			"Given this taxonomy of categories: %v\n"+

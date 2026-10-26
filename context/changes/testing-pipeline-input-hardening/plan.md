@@ -226,22 +226,22 @@ Migration `0007_libraries_error_detail` is additive and nullable — no backfill
 
 #### Automated
 
-- [x] 1.1 go build passes
-- [x] 1.2 TestUploadHandler_OversizedFileReturns400 passes
-- [x] 1.3 TestProjectUploadHandler_OversizedFileReturns400 passes
-- [x] 1.4 Full catalog package suite passes
+- [x] 1.1 go build passes — 20b334e
+- [x] 1.2 TestUploadHandler_OversizedFileReturns400 passes — 20b334e
+- [x] 1.3 TestProjectUploadHandler_OversizedFileReturns400 passes — 20b334e
+- [x] 1.4 Full catalog package suite passes — 20b334e
 
 #### Manual
 
-- [x] 1.5 Normal-sized upload through the running app's catalog/project upload UI still succeeds
+- [x] 1.5 Normal-sized upload through the running app's catalog/project upload UI still succeeds — 20b334e
 
 ### Phase 2: LLM prompt-injection mitigation
 
 #### Automated
 
-- [ ] 2.1 go build passes
-- [ ] 2.2 TestSanitizeForPrompt passes
-- [ ] 2.3 Full catalog package suite passes
+- [x] 2.1 go build passes
+- [x] 2.2 TestSanitizeForPrompt passes
+- [x] 2.3 Full catalog package suite passes
 
 ### Phase 3: Pipeline failure visibility & reconciliation
 
