@@ -43,7 +43,7 @@ func ProcessLibrary(ctx context.Context, store *Store, repoFinders []RepoFinder,
 		return err
 	}
 	if !found {
-		return store.UpdateLibraryStatus(ctx, lib.ID, "needs_manual", nil)
+		return store.UpdateLibraryStatus(ctx, lib.ID, "needs_manual", nil, nil)
 	}
 
 	githubTopics, err := topics.Topics(ctx, repo)
@@ -65,7 +65,7 @@ func ProcessLibrary(ctx context.Context, store *Store, repoFinders []RepoFinder,
 		return fmt.Errorf("catalog: failed to categorize %q: %w", lib.Purl, err)
 	}
 	if !confident {
-		return store.UpdateLibraryStatus(ctx, lib.ID, "needs_manual", &repo)
+		return store.UpdateLibraryStatus(ctx, lib.ID, "needs_manual", &repo, nil)
 	}
 
 	for _, categoryName := range categories {
@@ -85,7 +85,7 @@ func ProcessLibrary(ctx context.Context, store *Store, repoFinders []RepoFinder,
 		}
 	}
 
-	return store.UpdateLibraryStatus(ctx, lib.ID, "categorized", &repo)
+	return store.UpdateLibraryStatus(ctx, lib.ID, "categorized", &repo, nil)
 }
 
 // findRepo tries each finder in order until one reports found=true. A

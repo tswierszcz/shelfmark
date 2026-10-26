@@ -239,20 +239,20 @@ Migration `0007_libraries_error_detail` is additive and nullable — no backfill
 
 #### Automated
 
-- [x] 2.1 go build passes
-- [x] 2.2 TestSanitizeForPrompt passes
-- [x] 2.3 Full catalog package suite passes
+- [x] 2.1 go build passes — a9d3d10
+- [x] 2.2 TestSanitizeForPrompt passes — a9d3d10
+- [x] 2.3 Full catalog package suite passes — a9d3d10
 
 ### Phase 3: Pipeline failure visibility & reconciliation
 
 #### Automated
 
-- [ ] 3.1 go build passes
-- [ ] 3.2 Migration 0007 applies cleanly against a fresh test database
-- [ ] 3.3 TestQueue_BatchSettles_CountsReconcileAndFailureReasonPersists passes
-- [ ] 3.4 Full catalog package suite passes
-- [ ] 3.5 internal/db package suite passes
+- [x] 3.1 go build passes
+- [x] 3.2 Migration 0007 applies cleanly against a fresh test database
+- [x] 3.3 TestQueue_BatchSettles_CountsReconcileAndFailureReasonPersists passes
+- [x] 3.4 Full catalog package suite passes
+- [x] 3.5 internal/db package suite passes
 
 #### Manual
 
-- [ ] 3.6 Batch progress polled through the running app's HTTP endpoint shows counts summing to the uploaded count once settled
+- [x] 3.6 Batch progress polled through the running app's HTTP endpoint shows counts summing to the uploaded count once settled

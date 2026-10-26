@@ -73,7 +73,7 @@ func (q *Queue) worker() {
 func (q *Queue) process(lib Library) {
 	ctx := context.Background()
 
-	if err := q.store.UpdateLibraryStatus(ctx, lib.ID, "processing", nil); err != nil {
+	if err := q.store.UpdateLibraryStatus(ctx, lib.ID, "processing", nil, nil); err != nil {
 		return
 	}
 
@@ -93,6 +93,6 @@ func (q *Queue) process(lib Library) {
 		lastErr = err
 	}
 
-	_ = lastErr
-	_ = q.store.UpdateLibraryStatus(ctx, lib.ID, "failed", nil)
+	errMsg := lastErr.Error()
+	_ = q.store.UpdateLibraryStatus(ctx, lib.ID, "failed", nil, &errMsg)
 }

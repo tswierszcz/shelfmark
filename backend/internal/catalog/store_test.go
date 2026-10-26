@@ -245,10 +245,10 @@ func TestBatchProgress_ReturnsCorrectCountsForMixedStatusBatch(t *testing.T) {
 
 	// Drive two of the three into non-pending statuses; leave the third pending.
 	repo := "github.com/example/a"
-	if err := store.UpdateLibraryStatus(ctx, listed[0].ID, "categorized", &repo); err != nil {
+	if err := store.UpdateLibraryStatus(ctx, listed[0].ID, "categorized", &repo, nil); err != nil {
 		t.Fatalf("UpdateLibraryStatus failed: %v", err)
 	}
-	if err := store.UpdateLibraryStatus(ctx, listed[1].ID, "needs_manual", nil); err != nil {
+	if err := store.UpdateLibraryStatus(ctx, listed[1].ID, "needs_manual", nil, nil); err != nil {
 		t.Fatalf("UpdateLibraryStatus failed: %v", err)
 	}
 

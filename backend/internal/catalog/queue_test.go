@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -100,5 +101,90 @@ func TestQueue_TransientFinderError_RetriesThenMarksFailed(t *testing.T) {
 
 	if got := finder.calls.Load(); got != int32(maxAttempts) {
 		t.Fatalf("expected %d attempts (initial + retries), got %d", maxAttempts, got)
+	}
+}
+
+// artifactRoutingFinder resolves each library by its artifact ID, letting
+// one batch mix outcomes: a repo found, no repo found, or a transient error.
+type artifactRoutingFinder struct {
+	repos  map[string]string
+	errFor map[string]bool
+}
+
+func (f *artifactRoutingFinder) FindRepo(ctx context.Context, group, artifact, version string) (string, bool, error) {
+	if f.errFor[artifact] {
+		return "", false, errors.New("transient failure")
+	}
+	repo, ok := f.repos[artifact]
+	return repo, ok, nil
+}
+
+func TestQueue_BatchSettles_CountsReconcileAndFailureReasonPersists(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	const batchID = "77777777-7777-7777-7777-777777777771"
+	created := []NewLibrary{
+		{Purl: "pkg:maven/com.example/good@1.0.0", Name: "good", Ecosystem: "maven"},
+		{Purl: "pkg:maven/com.example/unknown@1.0.0", Name: "unknown", Ecosystem: "maven"},
+		{Purl: "pkg:maven/com.example/broken@1.0.0", Name: "broken", Ecosystem: "maven"},
+	}
+	if err := store.CreateLibraries(ctx, batchID, created); err != nil {
+		t.Fatalf("CreateLibraries failed: %v", err)
+	}
+	libs, err := store.ListLibraries(ctx, LibraryFilter{BatchID: batchID})
+	if err != nil {
+		t.Fatalf("ListLibraries failed: %v", err)
+	}
+
+	taxonomy, err := store.ListTaxonomy(ctx)
+	if err != nil {
+		t.Fatalf("ListTaxonomy failed: %v", err)
+	}
+	categoryName := taxonomy[0].Name
+
+	finders := []RepoFinder{&artifactRoutingFinder{
+		repos:  map[string]string{"good": "example/good"},
+		errFor: map[string]bool{"broken": true},
+	}}
+	topics := &fakeTopicsFetcher{topics: []string{categoryName}}
+	llm := &fakeCategorizer{categories: []string{categoryName}, confident: true}
+
+	queue := NewQueue(store, finders, topics, llm, 2)
+	for _, lib := range libs {
+		queue.Enqueue(lib)
+	}
+
+	wantStatus := map[string]string{"good": "categorized", "unknown": "needs_manual", "broken": "failed"}
+	settled := map[string]Library{}
+	for _, lib := range libs {
+		settled[lib.Name] = pollUntilStatus(t, store, lib.ID, batchID, wantStatus[lib.Name], 10*time.Second)
+	}
+
+	progress, err := store.BatchProgress(ctx, batchID)
+	if err != nil {
+		t.Fatalf("BatchProgress failed: %v", err)
+	}
+	total := 0
+	for status, count := range progress {
+		if status != "categorized" && status != "needs_manual" && status != "failed" {
+			t.Errorf("batch has %d libraries in non-terminal status %q", count, status)
+		}
+		total += count
+	}
+	if total != len(created) {
+		t.Fatalf("batch progress counts sum to %d, want %d created libraries (progress: %v)", total, len(created), progress)
+	}
+
+	failed := settled["broken"]
+	if failed.ErrorDetail == nil {
+		t.Fatalf("failed library has no error_detail, want the exhausted-retry reason")
+	}
+	if !strings.Contains(*failed.ErrorDetail, "transient failure") {
+		t.Fatalf("failed library error_detail = %q, want it to contain %q", *failed.ErrorDetail, "transient failure")
+	}
+	if settled["good"].ErrorDetail != nil {
+		t.Fatalf("categorized library has error_detail %q, want nil", *settled["good"].ErrorDetail)
 	}
 }

@@ -54,6 +54,7 @@ type Library struct {
 	Status        string  `json:"status"`
 	UploadBatchID string  `json:"upload_batch_id"`
 	IsDirect      bool    `json:"is_direct"`
+	ErrorDetail   *string `json:"error_detail,omitempty"`
 }
 
 // LibraryFilter narrows ListLibraries. Every field is optional (zero value
@@ -150,7 +151,7 @@ func (s *Store) ListTaxonomy(ctx context.Context) ([]Category, error) {
 // ListLibraries returns libraries matching filter. Every filter field is
 // optional; an empty filter returns every library.
 func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Library, error) {
-	query := `SELECT DISTINCT l.id, l.purl, l.name, l.ecosystem, l.github_repo, l.status, l.upload_batch_id,
+	query := `SELECT DISTINCT l.id, l.purl, l.name, l.ecosystem, l.github_repo, l.status, l.upload_batch_id, l.error_detail,
 	          EXISTS (SELECT 1 FROM project_libraries pl WHERE pl.library_id = l.id AND pl.is_direct) AS is_direct
 	          FROM libraries l`
 	var (
@@ -203,7 +204,7 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 	var libraries []Library
 	for rows.Next() {
 		var l Library
-		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID, &l.IsDirect); err != nil {
+		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID, &l.ErrorDetail, &l.IsDirect); err != nil {
 			return nil, fmt.Errorf("catalog: failed to scan library: %w", err)
 		}
 		libraries = append(libraries, l)
@@ -258,15 +259,17 @@ func (s *Store) CategoryNamesByLibrary(ctx context.Context, libraryIDs []string)
 // UpdateLibraryStatus sets a library's status and, when githubRepo is
 // non-nil, its github_repo column too (a nil githubRepo leaves the existing
 // value untouched, so callers that haven't resolved a repo yet don't need
-// to pass the column's current value back).
-func (s *Store) UpdateLibraryStatus(ctx context.Context, id string, status string, githubRepo *string) error {
+// to pass the column's current value back). errorDetail is always written,
+// so any transition away from "failed" clears a previous failure reason.
+func (s *Store) UpdateLibraryStatus(ctx context.Context, id string, status string, githubRepo *string, errorDetail *string) error {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE libraries
 		 SET status = $1,
 		     github_repo = COALESCE($2, github_repo),
+		     error_detail = $3,
 		     updated_at = now()
-		 WHERE id = $3`,
-		status, githubRepo, id,
+		 WHERE id = $4`,
+		status, githubRepo, errorDetail, id,
 	)
 	if err != nil {
 		return fmt.Errorf("catalog: failed to update library status: %w", err)

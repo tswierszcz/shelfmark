@@ -347,7 +347,7 @@ func TestProjectUploadHandler_PurlAlreadyInCatalogUnderDifferentBatchIsReused(t 
 	if err := store.AttachCategory(ctx, existing.ID, categories[0].ID, "manual"); err != nil {
 		t.Fatalf("AttachCategory failed: %v", err)
 	}
-	if err := store.UpdateLibraryStatus(ctx, existing.ID, "categorized", nil); err != nil {
+	if err := store.UpdateLibraryStatus(ctx, existing.ID, "categorized", nil, nil); err != nil {
 		t.Fatalf("UpdateLibraryStatus failed: %v", err)
 	}
 
