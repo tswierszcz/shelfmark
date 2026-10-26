@@ -105,7 +105,7 @@ If a row reads "none yet", that gap is addressed by the named rollout phase (§3
 | typecheck (`tsc` via `npm run typecheck`) + `go build` | local | required | syntactic / type drift |
 | Go unit + integration (`go test ./...`) | local | required after §3 Phase 1 | backend logic regressions |
 | frontend unit/component | local | required after §3 Phase 4 | frontend logic regressions |
-| post-edit hook | local (agent loop) | not yet wired — next: `/10x-configure-hook` (§3 Phase 1 complete) | regressions at edit time |
+| post-edit hook | local (agent loop) | wired 2026-10-26 — `.claude/hooks/` (per edit: gofmt + go vet / tsc; end of turn: vet, build, tests of changed packages except `internal/catalog`, web tsc); proven by `backend/hooktest` | regressions at edit time |
 | e2e on critical flows | CI on PR | not scoped by this rollout | broken critical user paths |
 
 ## 6. Cookbook Patterns
