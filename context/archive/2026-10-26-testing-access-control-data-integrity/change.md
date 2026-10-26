@@ -1,10 +1,10 @@
 ---
 change_id: testing-access-control-data-integrity
 title: Access control and data-integrity regression tests
-status: impl_reviewed
+status: archived
 created: 2026-10-26
 updated: 2026-10-26
-archived_at: null
+archived_at: 2026-10-26T21:15:42Z
 ---
 
 ## Notes
