@@ -309,29 +309,29 @@ No schema migration. Deploy note for the later `prod-deploy` change: set Fly `ki
 
 #### Automated
 
-- [x] 1.1 go build and go vet pass
-- [x] 1.2 internal/obs tests pass
-- [x] 1.3 internal/auth tests pass
-- [x] 1.4 Full suite passes
+- [x] 1.1 go build and go vet pass — 39aa837
+- [x] 1.2 internal/obs tests pass — 39aa837
+- [x] 1.3 internal/auth tests pass — 39aa837
+- [x] 1.4 Full suite passes — 39aa837
 
 #### Manual
 
-- [x] 1.5 Local /api/me logs one JSON request line with route, status, role, hashed user and request_id; / logs nothing; X-Request-Id returned
+- [x] 1.5 Local /api/me logs one JSON request line with route, status, role, hashed user and request_id; / logs nothing; X-Request-Id returned — 39aa837
 
 ### Phase 2: Handlers log their causes
 
 #### Automated
 
-- [ ] 2.1 go build and go vet pass
-- [ ] 2.2 Catalog logging tests pass
-- [ ] 2.3 internal/auth tests pass
-- [ ] 2.4 internal/db tests pass
-- [ ] 2.5 Full suite passes
-- [ ] 2.6 No bare 500 writes remain in internal/
+- [x] 2.1 go build and go vet pass
+- [x] 2.2 Catalog logging tests pass
+- [x] 2.3 internal/auth tests pass
+- [x] 2.4 internal/db tests pass
+- [x] 2.5 Full suite passes
+- [x] 2.6 No bare 500 writes remain in internal/
 
 #### Manual
 
-- [ ] 2.7 With Postgres stopped, /api/projects returns the same 500 and logs one Error line with route, request_id, role, user and pgx cause; /healthz 503 logs the ping error
+- [x] 2.7 With Postgres stopped, /api/projects returns the same 500 and logs one Error line with route, request_id, role, user and pgx cause; /healthz 503 logs the ping error
 
 ### Phase 3: Queue supervision & lifecycle
 

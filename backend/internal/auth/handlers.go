@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
 
 type loginRequest struct {
@@ -48,8 +50,7 @@ func LoginHandler(store *UsersStore) http.HandlerFunc {
 
 		account, found, err := store.GetByEmail(r.Context(), req.Email)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(errorResponse{Error: "could not verify credentials"})
+			writeUserError(w, r, http.StatusInternalServerError, "could not verify credentials", err)
 			return
 		}
 		if !found {
@@ -63,8 +64,7 @@ func LoginHandler(store *UsersStore) http.HandlerFunc {
 		}
 
 		if err := IssueSession(w, r, req.Email, account.Role); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(errorResponse{Error: "could not issue session"})
+			writeUserError(w, r, http.StatusInternalServerError, "could not issue session", err)
 			return
 		}
 
@@ -108,39 +108,37 @@ func CreateUserHandler(store *UsersStore) http.HandlerFunc {
 
 		var req createUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeUserError(w, http.StatusBadRequest, "invalid request body")
+			writeUserError(w, r, http.StatusBadRequest, "invalid request body", err)
 			return
 		}
 
 		if req.Email == "" || req.Password == "" {
-			writeUserError(w, http.StatusBadRequest, "email and password are required")
+			writeUserError(w, r, http.StatusBadRequest, "email and password are required", nil)
 			return
 		}
 		if len(req.Password) < 8 {
-			writeUserError(w, http.StatusBadRequest, "password must be at least 8 characters")
+			writeUserError(w, r, http.StatusBadRequest, "password must be at least 8 characters", nil)
 			return
 		}
 		switch req.Role {
 		case RoleAdmin, RoleArchitect, RoleViewer:
 		default:
-			writeUserError(w, http.StatusBadRequest, "role must be one of admin, architect, viewer")
+			writeUserError(w, r, http.StatusBadRequest, "role must be one of admin, architect, viewer", nil)
 			return
 		}
 
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(errorResponse{Error: "could not hash password"})
+			writeUserError(w, r, http.StatusInternalServerError, "could not hash password", err)
 			return
 		}
 
 		if err := store.Create(r.Context(), req.Email, string(hash), req.Role); err != nil {
 			if errors.Is(err, ErrEmailTaken) {
-				writeUserError(w, http.StatusConflict, "email already in use")
+				writeUserError(w, r, http.StatusConflict, "email already in use", err)
 				return
 			}
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(errorResponse{Error: "could not create user"})
+			writeUserError(w, r, http.StatusInternalServerError, "could not create user", err)
 			return
 		}
 
@@ -154,17 +152,25 @@ func ListUsersHandler(store *UsersStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		users, err := store.List(r.Context())
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(errorResponse{Error: "could not list users"})
+			writeUserError(w, r, http.StatusInternalServerError, "could not list users", err)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(users)
+		if err := json.NewEncoder(w).Encode(users); err != nil {
+			obs.LogWarn(r, "failed to encode response", err)
+		}
 	}
 }
 
-func writeUserError(w http.ResponseWriter, status int, msg string) {
+// writeUserError writes msg as the JSON error body with the given status. A
+// 5xx also logs msg and err with the request's attributes; 4xx responses are
+// not logged. Callers must never pass the request body, email or password as
+// part of err or msg.
+func writeUserError(w http.ResponseWriter, r *http.Request, status int, msg string, err error) {
+	if status >= http.StatusInternalServerError {
+		obs.LogError(r, msg, err)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(errorResponse{Error: msg})

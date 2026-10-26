@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/obs"
@@ -30,6 +31,16 @@ func RequireRole(allowed ...Role) func(http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			session, err := VerifySession(r)
 			if err != nil {
+				// A missing signing key and forged/rotated-key cookies are
+				// operational problems, not ordinary logouts, so they are
+				// logged; every other failure (no cookie, malformed, expired)
+				// is routine and stays silent.
+				switch {
+				case errors.Is(err, ErrNoSessionSecret):
+					obs.LogError(r, "session secret not configured", err)
+				case errors.Is(err, ErrInvalidSignature):
+					obs.LogWarn(r, "session signature invalid", err)
+				}
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}

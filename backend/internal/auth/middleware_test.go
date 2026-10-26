@@ -286,3 +286,104 @@ func TestRequireRole_WithoutObsMiddlewareDoesNotPanic(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", rec.Code)
 	}
 }
+
+func TestRequireRole_LogsSessionFailures(t *testing.T) {
+	newHandler := func(t *testing.T) http.Handler {
+		t.Helper()
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /api/me", RequireRole(RoleAdmin)(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("wrapped handler should not be called")
+		}))
+		return obs.Middleware(mux)
+	}
+
+	// tamper flips the last character of the cookie's signature so the
+	// payload stays well-formed but the HMAC no longer matches.
+	tamper := func(c *http.Cookie) *http.Cookie {
+		v := []byte(c.Value)
+		if v[len(v)-1] == 'A' {
+			v[len(v)-1] = 'B'
+		} else {
+			v[len(v)-1] = 'A'
+		}
+		return &http.Cookie{Name: c.Name, Value: string(v)}
+	}
+
+	tests := []struct {
+		name      string
+		setup     func(t *testing.T) *http.Cookie
+		wantLevel string // "" means no line at all for this request
+		wantMsg   string
+	}{
+		{
+			name: "secret unset logs error",
+			setup: func(t *testing.T) *http.Cookie {
+				withSessionSecret(t)
+				c := issueTestSession(t, "admin@example.com", RoleAdmin)
+				t.Setenv("SESSION_SECRET", "")
+				return c
+			},
+			wantLevel: "ERROR",
+			wantMsg:   "session secret not configured",
+		},
+		{
+			name: "tampered signature logs warn",
+			setup: func(t *testing.T) *http.Cookie {
+				withSessionSecret(t)
+				return tamper(issueTestSession(t, "admin@example.com", RoleAdmin))
+			},
+			wantLevel: "WARN",
+			wantMsg:   "session signature invalid",
+		},
+		{
+			name: "no cookie logs nothing",
+			setup: func(t *testing.T) *http.Cookie {
+				withSessionSecret(t)
+				return nil
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cookie := tc.setup(t)
+			sink := captureLogs(t)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+			if cookie != nil {
+				req.AddCookie(cookie)
+			}
+			rec := httptest.NewRecorder()
+
+			newHandler(t).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("expected 401, got %d", rec.Code)
+			}
+			if rec.Body.Len() != 0 {
+				t.Fatalf("expected bare 401 with no body, got %q", rec.Body.String())
+			}
+
+			requestID := rec.Header().Get("X-Request-Id")
+			var events []map[string]any
+			for _, line := range sink.Lines() {
+				if line["request_id"] == requestID && line["msg"] != "request" { // skip the access-log line
+					events = append(events, line)
+				}
+			}
+
+			if tc.wantLevel == "" {
+				if len(events) != 0 {
+					t.Fatalf("expected no log line, got %v", events)
+				}
+				return
+			}
+			if len(events) != 1 {
+				t.Fatalf("expected exactly one log line, got %d: %v", len(events), events)
+			}
+			if events[0]["level"] != tc.wantLevel || events[0]["msg"] != tc.wantMsg {
+				t.Fatalf("expected %s %q, got %v", tc.wantLevel, tc.wantMsg, events[0])
+			}
+		})
+	}
+}

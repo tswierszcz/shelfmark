@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/db"
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
 
 // startTestPostgres starts a throwaway Postgres container via the docker CLI
@@ -245,5 +247,47 @@ func TestListUsersHandler_NoUsersReturnsEmptyArrayNotNull(t *testing.T) {
 	// frontend .map() over the decoded response would crash on.
 	if rec.Body.String() != "[]\n" {
 		t.Fatalf("expected body %q, got %q", "[]\n", rec.Body.String())
+	}
+}
+
+func TestListUsers_5xx_LogsCause(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewUsersStore(pool)
+	// A closed pool makes the List query fail; Close is idempotent, so the
+	// helper's own t.Cleanup(pool.Close) is still fine.
+	pool.Close()
+
+	sink := captureLogs(t)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/users", ListUsersHandler(store))
+	handler := obs.Middleware(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("expected Content-Type application/json, got %q", ct)
+	}
+	var body errorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode error body: %v", err)
+	}
+	if body.Error != "could not list users" {
+		t.Fatalf("expected unchanged client message, got %q", body.Error)
+	}
+
+	requestID := rec.Header().Get("X-Request-Id")
+	lines := sink.Find("could not list users", "level", "ERROR", "request_id", requestID, "route", "GET /api/users")
+	if len(lines) != 1 {
+		t.Fatalf("expected exactly one Error line for request %s, got %d: %v", requestID, len(lines), sink.Lines())
+	}
+	if errAttr, _ := lines[0]["error"].(string); !strings.Contains(errAttr, "closed pool") {
+		t.Fatalf("expected error attr to carry the pgx cause, got %q", errAttr)
 	}
 }

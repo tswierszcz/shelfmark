@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
 
 const handlerFixtureSBOM = `{
@@ -715,5 +719,145 @@ func TestErrorDetail_VisibleToAdminCatalogButNotOrganizationLibraries(t *testing
 	}
 	if strings.Contains(orgRec.Body.String(), "error_detail") || strings.Contains(orgRec.Body.String(), "connection refused") {
 		t.Fatalf("organization libraries response must not expose error_detail to Architect/Viewer, got %s", orgRec.Body.String())
+	}
+}
+
+// logSink is a mutex-guarded writer that collects JSON log lines. It mirrors
+// the helper of the same name in the auth and obs test packages.
+type logSink struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (s *logSink) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Write(p)
+}
+
+// Lines returns every captured log line decoded as a JSON object.
+func (s *logSink) Lines() []map[string]any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	lines := make([]map[string]any, 0)
+	for _, raw := range strings.Split(s.buf.String(), "\n") {
+		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		var m map[string]any
+		if err := json.Unmarshal([]byte(raw), &m); err == nil {
+			lines = append(lines, m)
+		}
+	}
+	return lines
+}
+
+// Find returns the lines whose msg equals msg (any msg when msg is empty) and
+// whose attributes match every key/value pair in attrs (values compared via
+// fmt.Sprint).
+func (s *logSink) Find(msg string, attrs ...any) []map[string]any {
+	found := make([]map[string]any, 0)
+	for _, line := range s.Lines() {
+		if msg != "" && line["msg"] != msg {
+			continue
+		}
+		match := true
+		for i := 0; i+1 < len(attrs); i += 2 {
+			if fmt.Sprint(line[fmt.Sprint(attrs[i])]) != fmt.Sprint(attrs[i+1]) {
+				match = false
+				break
+			}
+		}
+		if match {
+			found = append(found, line)
+		}
+	}
+	return found
+}
+
+// captureLogs installs a JSON logger over a sink as the slog default for the
+// duration of the test.
+func captureLogs(t *testing.T) *logSink {
+	t.Helper()
+	sink := &logSink{}
+	prev := slog.Default()
+	slog.SetDefault(obs.NewLogger(sink))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return sink
+}
+
+func TestCatalogHandler_5xx_LogsCause(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	// A closed pool makes every subsequent store query fail; Close is
+	// idempotent, so the helper's own t.Cleanup(pool.Close) is still fine.
+	pool.Close()
+
+	sink := captureLogs(t)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/projects/{projectID}/report", ProjectReportHandler(store))
+	handler := obs.Middleware(mux)
+
+	const projectID = "00000000-0000-4000-8000-000000000001"
+	req := httptest.NewRequest(http.MethodGet, "/api/projects/"+projectID+"/report", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var body catalogErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode error body: %v", err)
+	}
+	if body.Error != "failed to check project existence" {
+		t.Fatalf("expected unchanged client message, got %q", body.Error)
+	}
+
+	requestID := rec.Header().Get("X-Request-Id")
+	if requestID == "" {
+		t.Fatalf("expected X-Request-Id response header")
+	}
+
+	lines := sink.Find("failed to check project existence",
+		"level", "ERROR",
+		"request_id", requestID,
+		"project_id", projectID,
+		"route", "GET /api/projects/{projectID}/report",
+		"method", http.MethodGet,
+	)
+	if len(lines) != 1 {
+		t.Fatalf("expected exactly one Error line for request %s, got %d: %v", requestID, len(lines), sink.Lines())
+	}
+	errAttr, _ := lines[0]["error"].(string)
+	if !strings.Contains(errAttr, "closed pool") {
+		t.Fatalf("expected error attr to carry the pgx cause, got %q", errAttr)
+	}
+}
+
+func TestCatalogHandler_4xx_DoesNotLog(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+
+	sink := captureLogs(t)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/catalog/upload", UploadHandler(store, &recordingEnqueuer{}))
+	handler := obs.Middleware(mux)
+
+	req := newMultipartUploadRequest(t, "", "sbom.json", []byte(handlerFixtureSBOM))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	requestID := rec.Header().Get("X-Request-Id")
+	if lines := sink.Find("", "level", "ERROR", "request_id", requestID); len(lines) != 0 {
+		t.Fatalf("expected no Error line for a 4xx, got %v", lines)
 	}
 }

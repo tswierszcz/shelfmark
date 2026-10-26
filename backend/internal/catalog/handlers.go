@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
 
 // Enqueuer accepts a library for background categorization processing. The
@@ -48,7 +49,15 @@ type catalogErrorResponse struct {
 	Error string `json:"error"`
 }
 
-func writeCatalogError(w http.ResponseWriter, status int, msg string) {
+// writeCatalogError writes msg as the JSON error body with the given status.
+// A 5xx also logs msg, err and attrs together with the request's attributes,
+// so the cause of a server error is recorded while the client still receives
+// only msg. 4xx responses are client mistakes and are not logged; callers
+// pass err when they have one for symmetry.
+func writeCatalogError(w http.ResponseWriter, r *http.Request, status int, msg string, err error, attrs ...any) {
+	if status >= http.StatusInternalServerError {
+		obs.LogError(r, msg, err, attrs...)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(catalogErrorResponse{Error: msg})
@@ -70,14 +79,14 @@ func UploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			var maxErr *http.MaxBytesError
 			if errors.As(err, &maxErr) {
-				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				writeCatalogError(w, r, http.StatusBadRequest, "uploaded file exceeds the 10MB limit", nil)
 				return
 			}
 		}
 
 		kind := r.FormValue("kind")
 		if kind != "sbom" && kind != "csv" {
-			writeCatalogError(w, http.StatusBadRequest, `kind must be "sbom" or "csv"`)
+			writeCatalogError(w, r, http.StatusBadRequest, `kind must be "sbom" or "csv"`, nil)
 			return
 		}
 
@@ -85,10 +94,10 @@ func UploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 		if err != nil {
 			var maxErr *http.MaxBytesError
 			if errors.As(err, &maxErr) {
-				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				writeCatalogError(w, r, http.StatusBadRequest, "uploaded file exceeds the 10MB limit", nil)
 				return
 			}
-			writeCatalogError(w, http.StatusBadRequest, "missing file")
+			writeCatalogError(w, r, http.StatusBadRequest, "missing file", err)
 			return
 		}
 		defer file.Close()
@@ -104,25 +113,25 @@ func UploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 			libs, skipped, err = ParsePurlCSV(file)
 		}
 		if err != nil {
-			writeCatalogError(w, http.StatusBadRequest, err.Error())
+			writeCatalogError(w, r, http.StatusBadRequest, err.Error(), err)
 			return
 		}
 
 		batchID, err := newBatchID()
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to generate batch id")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to generate batch id", err)
 			return
 		}
 
 		ctx := r.Context()
 		if err := store.CreateLibraries(ctx, batchID, libs); err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to create libraries")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to create libraries", err, "batch_id", batchID)
 			return
 		}
 
 		created, err := store.ListLibraries(ctx, LibraryFilter{BatchID: batchID})
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list created libraries")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list created libraries", err, "batch_id", batchID)
 			return
 		}
 
@@ -150,7 +159,7 @@ func BatchProgressHandler(store *Store) http.HandlerFunc {
 
 		progress, err := store.BatchProgress(r.Context(), batchID)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to get batch progress")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to get batch progress", err, "batch_id", batchID)
 			return
 		}
 
@@ -184,7 +193,7 @@ func ListLibrariesHandler(store *Store) http.HandlerFunc {
 		ctx := r.Context()
 		libraries, err := store.ListLibraries(ctx, filter)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list libraries")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list libraries", err, "query", "list_libraries")
 			return
 		}
 
@@ -194,7 +203,7 @@ func ListLibrariesHandler(store *Store) http.HandlerFunc {
 		}
 		categoryNames, err := store.CategoryNamesByLibrary(ctx, ids)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list library categories")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list library categories", err, "query", "category_names_by_library")
 			return
 		}
 
@@ -208,7 +217,9 @@ func ListLibrariesHandler(store *Store) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			obs.LogWarn(r, "failed to encode response", err)
+		}
 	}
 }
 
@@ -236,14 +247,14 @@ func ListOrganizationLibrariesHandler(store *Store) http.HandlerFunc {
 			v := false
 			filter.Strategic = &v
 		default:
-			writeCatalogError(w, http.StatusBadRequest, `strategic must be "true" or "false"`)
+			writeCatalogError(w, r, http.StatusBadRequest, `strategic must be "true" or "false"`, nil)
 			return
 		}
 
 		ctx := r.Context()
 		libraries, err := store.ListLibraries(ctx, filter)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list libraries")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list libraries", err, "query", "list_libraries")
 			return
 		}
 
@@ -253,12 +264,12 @@ func ListOrganizationLibrariesHandler(store *Store) http.HandlerFunc {
 		}
 		categoryNames, err := store.CategoryNamesByLibrary(ctx, ids)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list library categories")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list library categories", err, "query", "category_names_by_library")
 			return
 		}
 		strategicMarks, err := store.StrategicMarksByLibrary(ctx, ids)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list strategic marks")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list strategic marks", err, "query", "strategic_marks_by_library")
 			return
 		}
 
@@ -279,7 +290,9 @@ func ListOrganizationLibrariesHandler(store *Store) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			obs.LogWarn(r, "failed to encode response", err)
+		}
 	}
 }
 
@@ -289,12 +302,14 @@ func ListTaxonomyHandler(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		categories, err := store.ListTaxonomy(r.Context())
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list taxonomy")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list taxonomy", err)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(categories)
+		if err := json.NewEncoder(w).Encode(categories); err != nil {
+			obs.LogWarn(r, "failed to encode response", err)
+		}
 	}
 }
 
@@ -313,12 +328,12 @@ func AttachCategoryHandler(store *Store) http.HandlerFunc {
 
 		var req attachCategoryRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CategoryID == "" {
-			writeCatalogError(w, http.StatusBadRequest, "missing or malformed category_id")
+			writeCatalogError(w, r, http.StatusBadRequest, "missing or malformed category_id", nil)
 			return
 		}
 
 		if err := store.AttachCategory(r.Context(), libraryID, req.CategoryID, "manual"); err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to attach category")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to attach category", err, "library_id", libraryID, "category_id", req.CategoryID)
 			return
 		}
 
@@ -341,7 +356,7 @@ func MarkStrategicHandler(store *Store) http.HandlerFunc {
 
 		var req strategicMarkRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Justification) == "" {
-			writeCatalogError(w, http.StatusBadRequest, "missing or blank justification")
+			writeCatalogError(w, r, http.StatusBadRequest, "missing or blank justification", nil)
 			return
 		}
 
@@ -353,14 +368,14 @@ func MarkStrategicHandler(store *Store) http.HandlerFunc {
 
 		if err := store.MarkStrategic(r.Context(), libraryID, categoryID, req.Justification, session.Email); err != nil {
 			if errors.Is(err, ErrInvalidReference) {
-				writeCatalogError(w, http.StatusBadRequest, "library or category does not exist")
+				writeCatalogError(w, r, http.StatusBadRequest, "library or category does not exist", err)
 				return
 			}
 			if errors.Is(err, ErrStrategicCapReached) {
-				writeCatalogError(w, http.StatusConflict, "already 2 strategic libraries marked for this category and ecosystem")
+				writeCatalogError(w, r, http.StatusConflict, "already 2 strategic libraries marked for this category and ecosystem", err)
 				return
 			}
-			writeCatalogError(w, http.StatusInternalServerError, "failed to mark strategic")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to mark strategic", err, "library_id", libraryID, "category_id", categoryID)
 			return
 		}
 
@@ -381,7 +396,7 @@ func UnmarkStrategicHandler(store *Store) http.HandlerFunc {
 
 		var req strategicMarkRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Justification) == "" {
-			writeCatalogError(w, http.StatusBadRequest, "missing or blank justification")
+			writeCatalogError(w, r, http.StatusBadRequest, "missing or blank justification", nil)
 			return
 		}
 
@@ -393,10 +408,10 @@ func UnmarkStrategicHandler(store *Store) http.HandlerFunc {
 
 		if err := store.UnmarkStrategic(r.Context(), libraryID, categoryID, req.Justification, session.Email); err != nil {
 			if errors.Is(err, ErrStrategicMarkNotFound) {
-				writeCatalogError(w, http.StatusNotFound, "no active strategic mark found for this library and category")
+				writeCatalogError(w, r, http.StatusNotFound, "no active strategic mark found for this library and category", err)
 				return
 			}
-			writeCatalogError(w, http.StatusInternalServerError, "failed to unmark strategic")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to unmark strategic", err, "library_id", libraryID, "category_id", categoryID)
 			return
 		}
 

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -19,6 +20,7 @@ func HealthCheck(pool *pgxpool.Pool) http.HandlerFunc {
 		defer cancel()
 
 		if err := pool.Ping(ctx); err != nil {
+			slog.Error("healthz: db ping failed", "error", err)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_, _ = w.Write([]byte("db unreachable"))
 			return

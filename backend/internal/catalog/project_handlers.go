@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
 
 type projectUploadResponse struct {
@@ -41,14 +42,14 @@ func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			var maxErr *http.MaxBytesError
 			if errors.As(err, &maxErr) {
-				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				writeCatalogError(w, r, http.StatusBadRequest, "uploaded file exceeds the 10MB limit", nil)
 				return
 			}
 		}
 
 		projectName := strings.TrimSpace(r.FormValue("project_name"))
 		if projectName == "" {
-			writeCatalogError(w, http.StatusBadRequest, "missing project_name")
+			writeCatalogError(w, r, http.StatusBadRequest, "missing project_name", nil)
 			return
 		}
 
@@ -56,29 +57,29 @@ func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 		if err != nil {
 			var maxErr *http.MaxBytesError
 			if errors.As(err, &maxErr) {
-				writeCatalogError(w, http.StatusBadRequest, "uploaded file exceeds the 10MB limit")
+				writeCatalogError(w, r, http.StatusBadRequest, "uploaded file exceeds the 10MB limit", nil)
 				return
 			}
-			writeCatalogError(w, http.StatusBadRequest, "missing file")
+			writeCatalogError(w, r, http.StatusBadRequest, "missing file", err)
 			return
 		}
 		defer file.Close()
 
 		libs, isDirect, skipped, err := ParseProjectSBOM(file)
 		if err != nil {
-			writeCatalogError(w, http.StatusBadRequest, err.Error())
+			writeCatalogError(w, r, http.StatusBadRequest, err.Error(), err)
 			return
 		}
 
 		batchID, err := newBatchID()
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to generate batch id")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to generate batch id", err)
 			return
 		}
 
 		ctx := r.Context()
 		if err := store.CreateLibraries(ctx, batchID, libs); err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to create libraries")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to create libraries", err, "batch_id", batchID)
 			return
 		}
 
@@ -88,7 +89,7 @@ func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 		}
 		resolved, err := store.LibrariesByPurls(ctx, purls)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to resolve libraries")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to resolve libraries", err, "batch_id", batchID)
 			return
 		}
 
@@ -105,7 +106,7 @@ func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 
 		project, err := store.FindOrCreateProject(ctx, projectName, session.Email)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to find or create project")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to find or create project", err, "batch_id", batchID)
 			return
 		}
 
@@ -114,7 +115,7 @@ func ProjectUploadHandler(store *Store, queue Enqueuer) http.HandlerFunc {
 			entries[i] = ProjectLibraryEntry{LibraryID: lib.ID, IsDirect: isDirect[lib.Purl]}
 		}
 		if err := store.ReplaceProjectLibraries(ctx, project.ID, entries); err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to record project libraries")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to record project libraries", err, "batch_id", batchID, "project_id", project.ID)
 			return
 		}
 
@@ -164,17 +165,17 @@ func ProjectReportHandler(store *Store) http.HandlerFunc {
 		ctx := r.Context()
 		exists, err := store.projectExists(ctx, projectID)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to check project existence")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to check project existence", err, "project_id", projectID)
 			return
 		}
 		if !exists {
-			writeCatalogError(w, http.StatusNotFound, "project not found")
+			writeCatalogError(w, r, http.StatusNotFound, "project not found", nil)
 			return
 		}
 
 		rows, err := store.ProjectReport(ctx, projectID)
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to compute project report")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to compute project report", err, "project_id", projectID)
 			return
 		}
 
@@ -214,7 +215,9 @@ func ProjectReportHandler(store *Store) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			obs.LogWarn(r, "failed to encode response", err)
+		}
 	}
 }
 
@@ -224,11 +227,13 @@ func ListProjectsHandler(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projects, err := store.ListProjects(r.Context())
 		if err != nil {
-			writeCatalogError(w, http.StatusInternalServerError, "failed to list projects")
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to list projects", err)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(projects)
+		if err := json.NewEncoder(w).Encode(projects); err != nil {
+			obs.LogWarn(r, "failed to encode response", err)
+		}
 	}
 }

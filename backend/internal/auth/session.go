@@ -36,6 +36,11 @@ var (
 	// ErrSessionExpired indicates the cookie signature was valid but the
 	// session has expired.
 	ErrSessionExpired = errors.New("auth: session expired")
+	// ErrInvalidSignature indicates the cookie was well-formed but its HMAC
+	// signature does not match: a forged cookie or one signed with a rotated
+	// key. VerifySession returns it wrapped together with ErrInvalidSession,
+	// so errors.Is(err, ErrInvalidSession) still holds.
+	ErrInvalidSignature = errors.New("auth: invalid session signature")
 )
 
 // sessionSecret returns the configured signing key, or an error if it is unset.
@@ -121,7 +126,7 @@ func VerifySession(r *http.Request) (Session, error) {
 
 	expectedSignature := signPayload(secret, payload)
 	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
-		return Session{}, ErrInvalidSession
+		return Session{}, fmt.Errorf("%w: %w", ErrInvalidSession, ErrInvalidSignature)
 	}
 
 	fields := strings.SplitN(payload, "|", 3)
