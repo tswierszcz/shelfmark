@@ -270,8 +270,8 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Manual
 
-- [ ] 1.4 Local server: Architect upload 403, Admin projects 403, SPA loads
-- [ ] 1.5 User reviewed expectedRoles table against PRD Access Control
+- [x] 1.4 Local server: Architect upload 403, Admin projects 403, SPA loads
+- [x] 1.5 User reviewed expectedRoles table against PRD Access Control
 
 ### Phase 2: List endpoints never null (#2)
 
@@ -283,7 +283,7 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Manual
 
-- [ ] 2.4 Valid CSV upload returns "skipped":[]
+- [x] 2.4 Valid CSV upload returns "skipped":[]
 
 ### Phase 3: Strategic cap — contract, edges, concurrency (#6)
 
@@ -303,4 +303,4 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Manual
 
-- [ ] 4.3 PRD Access Control and route table read consistently
+- [x] 4.3 PRD Access Control and route table read consistently
