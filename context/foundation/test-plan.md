@@ -73,7 +73,7 @@ orchestrator updates Status as artifacts appear on disk.
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
 | 1 | Critical-path pipeline & input hardening | Prove the SBOM/LLM pipeline doesn't silently drop data and malformed input can't crash it | #1, #7 | unit + integration | complete | `context/archive/2026-10-21-testing-pipeline-input-hardening/` |
-| 2 | Access control & data-integrity regressions | Lock role gating and the strategic-marks cap against regression | #2, #3, #6 | unit + integration | planned | `context/changes/testing-access-control-data-integrity/` |
+| 2 | Access control & data-integrity regressions | Lock role gating and the strategic-marks cap against regression | #2, #3, #6 | unit + integration | complete | `context/archive/2026-10-26-testing-access-control-data-integrity/` |
 | 3 | Redundancy report correctness | Prove cross-project aggregation yields the right retire/strategic call | #4 | integration | not started | — |
 | 4 | Frontend functional test harness | Stand up a frontend test runner and cover error/empty/role-mismatch rendering on the highest-churn routes | #5 | unit/component (new setup) | not started | — |
 
