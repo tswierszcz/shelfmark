@@ -272,6 +272,9 @@ func ListOrganizationLibrariesHandler(store *Store) http.HandlerFunc {
 			if marks == nil {
 				marks = []StrategicMark{}
 			}
+			// error_detail is an admin-only pipeline diagnostic (raw upstream
+			// error chains); Architect/Viewer don't get it.
+			l.ErrorDetail = nil
 			resp[i] = libraryResponse{Library: l, Categories: names, Strategic: marks}
 		}
 

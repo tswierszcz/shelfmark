@@ -44,6 +44,7 @@ func startTestPostgres(t *testing.T) *pgxpool.Pool {
 		"--name", containerName,
 		"-p", fmt.Sprintf("%d:5432", port),
 		"-e", "POSTGRES_PASSWORD=postgres",
+		"--tmpfs", "/var/lib/postgresql/data",
 		"postgres:16-alpine",
 	}
 	out, err := exec.Command("docker", runArgs...).CombinedOutput()
@@ -52,7 +53,7 @@ func startTestPostgres(t *testing.T) *pgxpool.Pool {
 	}
 
 	t.Cleanup(func() {
-		exec.Command("docker", "rm", "-f", containerName).Run()
+		exec.Command("docker", "rm", "-f", "-v", containerName).Run()
 	})
 
 	databaseURL := fmt.Sprintf("postgres://postgres:postgres@localhost:%d/postgres?sslmode=disable", port)

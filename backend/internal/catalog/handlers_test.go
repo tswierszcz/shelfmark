@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
@@ -683,5 +684,36 @@ func TestMarkStrategicHandler_RoleGating(t *testing.T) {
 	}
 	if len(marks[lib.ID]) != 0 {
 		t.Fatalf("expected no strategic marks after rejected requests, got %+v", marks[lib.ID])
+	}
+}
+
+func TestErrorDetail_VisibleToAdminCatalogButNotOrganizationLibraries(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	lib := seedOneLibrary(t, store, "88888888-8888-8888-8888-888888888881",
+		NewLibrary{Purl: "pkg:maven/com.example/broken@1.0.0", Name: "broken", Ecosystem: "maven"})
+	reason := "catalog: repo finder failed: dial tcp 10.0.0.1:443: connect: connection refused"
+	if err := store.UpdateLibraryStatus(ctx, lib.ID, "failed", nil, &reason); err != nil {
+		t.Fatalf("UpdateLibraryStatus failed: %v", err)
+	}
+
+	adminRec := httptest.NewRecorder()
+	ListLibrariesHandler(store)(adminRec, httptest.NewRequest(http.MethodGet, "/api/catalog/libraries", nil))
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin catalog: expected 200, got %d: %s", adminRec.Code, adminRec.Body.String())
+	}
+	if !strings.Contains(adminRec.Body.String(), "connection refused") {
+		t.Fatalf("admin catalog response should carry error_detail, got %s", adminRec.Body.String())
+	}
+
+	orgRec := httptest.NewRecorder()
+	ListOrganizationLibrariesHandler(store)(orgRec, httptest.NewRequest(http.MethodGet, "/api/organization/libraries", nil))
+	if orgRec.Code != http.StatusOK {
+		t.Fatalf("organization libraries: expected 200, got %d: %s", orgRec.Code, orgRec.Body.String())
+	}
+	if strings.Contains(orgRec.Body.String(), "error_detail") || strings.Contains(orgRec.Body.String(), "connection refused") {
+		t.Fatalf("organization libraries response must not expose error_detail to Architect/Viewer, got %s", orgRec.Body.String())
 	}
 }

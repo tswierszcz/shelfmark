@@ -117,14 +117,14 @@ func (c *OpenRouterClient) complete(ctx context.Context, prompt string) (string,
 
 // sanitizeForPrompt neutralizes attacker-controlled strings (e.g.
 // purl-derived group/artifact/version/purl fields) before they're
-// interpolated into an LLM prompt. It replaces every Unicode
-// control-category rune (newlines, carriage returns, tabs, etc.) with a
-// single space, collapses repeated whitespace, trims the result, and
+// interpolated into an LLM prompt. It replaces every Unicode control
+// (Cc: newlines, carriage returns, tabs, etc.) and format (Cf: bidi
+// overrides, zero-width characters) rune with a single space, collapses repeated whitespace, trims the result, and
 // truncates to 200 runes (appending "..." when truncated) so a
 // maliciously huge field can't balloon the prompt.
 func sanitizeForPrompt(s string) string {
 	replaced := strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
 			return ' '
 		}
 		return r
@@ -137,6 +137,22 @@ func sanitizeForPrompt(s string) string {
 		return string(runes[:200]) + "..."
 	}
 	return collapsed
+}
+
+// maxPromptTopics caps how many GitHub topics reach the Categorize prompt.
+const maxPromptTopics = 20
+
+// sanitizeTopicsForPrompt applies sanitizeForPrompt to each GitHub topic
+// (third-party controlled) and caps the count, returning a new slice.
+func sanitizeTopicsForPrompt(topics []string) []string {
+	if len(topics) > maxPromptTopics {
+		topics = topics[:maxPromptTopics]
+	}
+	sanitized := make([]string, 0, len(topics))
+	for _, t := range topics {
+		sanitized = append(sanitized, sanitizeForPrompt(t))
+	}
+	return sanitized
 }
 
 // FindRepo implements RepoFinder as an LLM-backed fallback for when
@@ -181,6 +197,7 @@ func (c *OpenRouterClient) FindRepo(ctx context.Context, group, artifact, versio
 // confused model response is not a transport failure.
 func (c *OpenRouterClient) Categorize(ctx context.Context, purl string, githubTopics []string, taxonomy []string) ([]string, bool, error) {
 	purl = sanitizeForPrompt(purl)
+	githubTopics = sanitizeTopicsForPrompt(githubTopics)
 
 	prompt := fmt.Sprintf(
 		"A software library has the package URL %q and GitHub topics %v.\n"+
