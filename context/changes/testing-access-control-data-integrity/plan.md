@@ -264,9 +264,9 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Automated
 
-- [x] 1.1 go build and go vet pass
-- [x] 1.2 Route role-set and denial-matrix tests pass
-- [x] 1.3 Full suite passes
+- [x] 1.1 go build and go vet pass — 7b6a342
+- [x] 1.2 Route role-set and denial-matrix tests pass — 7b6a342
+- [x] 1.3 Full suite passes — 7b6a342
 
 #### Manual
 
@@ -277,9 +277,9 @@ No schema migration. The lock is transaction-scoped and needs no cleanup.
 
 #### Automated
 
-- [ ] 2.1 go build and go vet pass
-- [ ] 2.2 Raw-JSON contract tests pass (5 run)
-- [ ] 2.3 Full suite passes
+- [x] 2.1 go build and go vet pass
+- [x] 2.2 Raw-JSON contract tests pass (5 run)
+- [x] 2.3 Full suite passes
 
 #### Manual
 

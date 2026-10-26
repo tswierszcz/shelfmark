@@ -19,10 +19,10 @@ func ParsePurlCSV(r io.Reader) ([]NewLibrary, []SkippedRow, error) {
 		return nil, nil, fmt.Errorf("catalog: failed to parse CSV: %w", err)
 	}
 
-	var (
-		libraries []NewLibrary
-		skipped   []SkippedRow
-	)
+	// skipped is non-nil so a clean upload marshals "skipped": [] rather
+	// than null (lessons.md: Go nil slices marshal to JSON null).
+	var libraries []NewLibrary
+	skipped := []SkippedRow{}
 
 	for i, record := range records {
 		if len(record) == 0 {

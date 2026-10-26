@@ -202,7 +202,8 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 	}
 	defer rows.Close()
 
-	var libraries []Library
+	// Non-nil so callers marshaling it directly get [] rather than null.
+	libraries := []Library{}
 	for rows.Next() {
 		var l Library
 		if err := rows.Scan(&l.ID, &l.Purl, &l.Name, &l.Ecosystem, &l.GithubRepo, &l.Status, &l.UploadBatchID, &l.ErrorDetail, &l.IsDirect); err != nil {

@@ -31,10 +31,10 @@ func ParseCycloneDXSBOM(r io.Reader) ([]NewLibrary, []SkippedRow, error) {
 		return nil, nil, fmt.Errorf("catalog: not a CycloneDX BOM (missing or unexpected bomFormat %q)", bom.BOMFormat)
 	}
 
-	var (
-		libraries []NewLibrary
-		skipped   []SkippedRow
-	)
+	// skipped is non-nil so a clean upload marshals "skipped": [] rather
+	// than null (lessons.md: Go nil slices marshal to JSON null).
+	var libraries []NewLibrary
+	skipped := []SkippedRow{}
 
 	if bom.Components == nil {
 		return libraries, skipped, nil

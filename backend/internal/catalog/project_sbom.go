@@ -33,10 +33,10 @@ func ParseProjectSBOM(r io.Reader) ([]NewLibrary, map[string]bool, []SkippedRow,
 		return nil, nil, nil, fmt.Errorf("catalog: not a CycloneDX BOM (missing or unexpected bomFormat %q)", bom.BOMFormat)
 	}
 
-	var (
-		libraries []NewLibrary
-		skipped   []SkippedRow
-	)
+	// skipped is non-nil so a clean upload marshals "skipped": [] rather
+	// than null (lessons.md: Go nil slices marshal to JSON null).
+	var libraries []NewLibrary
+	skipped := []SkippedRow{}
 
 	isDirect := map[string]bool{}
 
