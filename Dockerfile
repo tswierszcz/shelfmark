@@ -9,7 +9,7 @@ COPY web/ ./
 RUN npm run build
 
 # 2. Backend: build a static Go binary.
-FROM golang:1.27-alpine AS backend
+FROM golang:1.27.3-alpine AS backend
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum* ./
 RUN go mod download

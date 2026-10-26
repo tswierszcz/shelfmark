@@ -2,6 +2,8 @@ module github.com/tswierszcz/shelfmark/backend
 
 go 1.27.1
 
+toolchain go1.27.3
+
 require (
 	github.com/CycloneDX/cyclonedx-go v0.12.0
 	github.com/golang-migrate/migrate/v4 v4.20.1
