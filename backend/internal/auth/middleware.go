@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"net/http"
+
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
 
 // sessionContextKey is an unexported type to avoid collisions with context
@@ -21,7 +23,8 @@ func SessionFromContext(ctx context.Context) (Session, bool) {
 // 401 when the session is missing, malformed, or expired, and 403 when the
 // session is valid but its role is not permitted. On success, the verified
 // Session is attached to the request context for the wrapped handler to read
-// via SessionFromContext.
+// via SessionFromContext, and the caller's role and hashed identity are
+// recorded on the request's obs.RequestInfo for logging.
 func RequireRole(allowed ...Role) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +45,8 @@ func RequireRole(allowed ...Role) func(http.HandlerFunc) http.HandlerFunc {
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}
+
+			obs.FromContext(r.Context()).SetUser(string(session.Role), UserHash(session.Email))
 
 			ctx := context.WithValue(r.Context(), sessionContextKey{}, session)
 			next(w, r.WithContext(ctx))

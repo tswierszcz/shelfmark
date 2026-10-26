@@ -1,11 +1,81 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
+
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
+
+// logSink is a mutex-guarded writer that collects JSON log lines.
+type logSink struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (s *logSink) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Write(p)
+}
+
+// Lines returns every captured log line decoded as a JSON object.
+func (s *logSink) Lines() []map[string]any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	lines := make([]map[string]any, 0)
+	for _, raw := range strings.Split(s.buf.String(), "\n") {
+		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		var m map[string]any
+		if err := json.Unmarshal([]byte(raw), &m); err == nil {
+			lines = append(lines, m)
+		}
+	}
+	return lines
+}
+
+// Find returns the lines whose msg equals msg and whose attributes match every
+// key/value pair in attrs (values compared via fmt.Sprint).
+func (s *logSink) Find(msg string, attrs ...any) []map[string]any {
+	found := make([]map[string]any, 0)
+	for _, line := range s.Lines() {
+		if line["msg"] != msg {
+			continue
+		}
+		match := true
+		for i := 0; i+1 < len(attrs); i += 2 {
+			if fmt.Sprint(line[fmt.Sprint(attrs[i])]) != fmt.Sprint(attrs[i+1]) {
+				match = false
+				break
+			}
+		}
+		if match {
+			found = append(found, line)
+		}
+	}
+	return found
+}
+
+// captureLogs installs a JSON logger over a sink as the slog default for the
+// duration of the test.
+func captureLogs(t *testing.T) *logSink {
+	t.Helper()
+	sink := &logSink{}
+	prev := slog.Default()
+	slog.SetDefault(obs.NewLogger(sink))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return sink
+}
 
 func withSessionSecret(t *testing.T) {
 	t.Helper()
@@ -136,5 +206,83 @@ func TestRequireRole_ValidSessionWrongRoleReturns403(t *testing.T) {
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", rec.Code)
+	}
+}
+
+func TestRequireRole_RecordsRoleAndHashedUserInAccessLog(t *testing.T) {
+	withSessionSecret(t)
+	sink := captureLogs(t)
+
+	const email = "Admin@Example.com"
+	cookie := issueTestSession(t, email, RoleAdmin)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/me", RequireRole(RoleAdmin)(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	obs.Middleware(mux).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+	id := rec.Header().Get("X-Request-Id")
+	lines := sink.Find("request", "request_id", id)
+	if len(lines) != 1 {
+		t.Fatalf("expected one access line, got %v", sink.Lines())
+	}
+	line := lines[0]
+	if line["role"] != string(RoleAdmin) {
+		t.Errorf("role = %v, want %s", line["role"], RoleAdmin)
+	}
+	user, _ := line["user"].(string)
+	if len(user) != 12 {
+		t.Errorf("user = %q, want 12 hex chars", user)
+	}
+	if user != UserHash(email) {
+		t.Errorf("user = %q, want UserHash(email) = %q", user, UserHash(email))
+	}
+	raw, _ := json.Marshal(line)
+	if strings.Contains(strings.ToLower(string(raw)), "admin@example.com") {
+		t.Errorf("access line leaks the email: %s", raw)
+	}
+}
+
+func TestUserHash(t *testing.T) {
+	t.Setenv("SESSION_SECRET", "")
+	if got := UserHash("user@example.com"); got != "" {
+		t.Fatalf("UserHash without secret = %q, want empty", got)
+	}
+
+	withSessionSecret(t)
+	h := UserHash("user@example.com")
+	if len(h) != 12 {
+		t.Fatalf("UserHash length = %d, want 12", len(h))
+	}
+	if UserHash("USER@example.com") != h {
+		t.Errorf("UserHash should be case-insensitive")
+	}
+	if UserHash("other@example.com") == h {
+		t.Errorf("UserHash should differ for different emails")
+	}
+}
+
+func TestRequireRole_WithoutObsMiddlewareDoesNotPanic(t *testing.T) {
+	withSessionSecret(t)
+	cookie := issueTestSession(t, "viewer@example.com", RoleViewer)
+
+	handler := RequireRole(RoleViewer)(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
 	}
 }

@@ -10,11 +10,12 @@ RUN npm run build
 
 # 2. Backend: build a static Go binary.
 FROM golang:1.27.3-alpine AS backend
+ARG VERSION=dev
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum* ./
 RUN go mod download
 COPY backend/ ./
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/shelfmark ./cmd/shelfmark
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/tswierszcz/shelfmark/backend/internal/obs.Version=${VERSION}" -o /out/shelfmark ./cmd/shelfmark
 
 # 3. Runtime: the Go binary serves the API and the built SPA.
 FROM gcr.io/distroless/static-debian12:nonroot

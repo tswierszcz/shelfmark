@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -51,6 +52,20 @@ func signPayload(secret []byte, payload string) string {
 	mac := hmac.New(sha256.New, secret)
 	mac.Write([]byte(payload))
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+// UserHash returns a stable, non-reversible identifier for email suitable for
+// logs: the first 12 hex chars of HMAC-SHA256(lowercased email, SESSION_SECRET).
+// It returns "" when the secret is unset, so callers omit the attribute rather
+// than hashing with an empty key.
+func UserHash(email string) string {
+	secret, err := sessionSecret()
+	if err != nil {
+		return ""
+	}
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte(strings.ToLower(email)))
+	return hex.EncodeToString(mac.Sum(nil))[:12]
 }
 
 // IssueSession sets a signed, stateless session cookie encoding email, role,

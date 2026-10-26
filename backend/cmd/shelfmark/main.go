@@ -2,40 +2,44 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
 	"github.com/tswierszcz/shelfmark/backend/internal/catalog"
 	"github.com/tswierszcz/shelfmark/backend/internal/db"
+	"github.com/tswierszcz/shelfmark/backend/internal/obs"
 )
 
 func main() {
+	slog.SetDefault(obs.NewLogger(os.Stdout))
+
 	addr := ":" + envOr("PORT", "8080")
 	staticDir := envOr("STATIC_DIR", "../web/build/client")
 
 	pool, err := db.Connect(context.Background())
 	if err != nil {
-		log.Fatalf("db: failed to connect: %v", err)
+		fatal("db: failed to connect", err)
 	}
 	if err := db.Migrate(os.Getenv("DATABASE_URL")); err != nil {
 		pool.Close()
-		log.Fatalf("db: failed to migrate: %v", err)
+		fatal("db: failed to migrate", err)
 	}
 
 	usersStore := auth.NewUsersStore(pool)
 	if err := usersStore.SeedFromEnvIfEmpty(context.Background()); err != nil {
 		pool.Close()
-		log.Fatalf("auth: failed to seed accounts: %v", err)
+		fatal("auth: failed to seed accounts", err)
 	}
 
 	catalogStore := catalog.NewStore(pool)
 
 	openRouterClient, err := catalog.NewOpenRouterClient()
 	if err != nil {
-		log.Fatalf("catalog: failed to construct openrouter client: %v", err)
+		fatal("catalog: failed to construct openrouter client", err)
 	}
 	finders := []catalog.RepoFinder{catalog.NewDepsDevClient(), openRouterClient}
 	catalogQueue := catalog.NewQueue(catalogStore, finders, catalog.NewGitHubClient(), openRouterClient, 5)
@@ -60,8 +64,26 @@ func main() {
 	mux.HandleFunc("GET /api/projects/{projectID}/report", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ProjectReportHandler(catalogStore)))
 	mux.Handle("GET /", spaHandler(staticDir))
 
-	log.Printf("listening on %s, serving SPA from %s", addr, staticDir)
-	log.Fatal(http.ListenAndServe(addr, mux))
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           obs.Middleware(mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		// Read/Write timeouts are sized for 10MB catalog/project uploads.
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	slog.Info("listening", "addr", addr, "static_dir", staticDir)
+	if err := srv.ListenAndServe(); err != nil {
+		fatal("http: server stopped", err)
+	}
+}
+
+// fatal logs a boot/serve failure at Error level and exits with status 1.
+func fatal(msg string, err error) {
+	slog.Error(msg, "error", err.Error())
+	os.Exit(1)
 }
 
 // spaHandler serves the built frontend from dir. Paths that are not files fall back
