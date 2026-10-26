@@ -56,25 +56,13 @@ func main() {
 	// delay serving or the health check.
 	go catalogQueue.Sweep(ctx, catalog.StuckLibraryAge)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", db.HealthCheck(pool))
-	mux.HandleFunc("POST /api/login", auth.LoginHandler(usersStore))
-	mux.HandleFunc("POST /api/logout", auth.LogoutHandler())
-	mux.HandleFunc("GET /api/me", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(auth.MeHandler()))
-	mux.HandleFunc("POST /api/users", auth.RequireRole(auth.RoleAdmin)(auth.CreateUserHandler(usersStore)))
-	mux.HandleFunc("GET /api/users", auth.RequireRole(auth.RoleAdmin)(auth.ListUsersHandler(usersStore)))
-	mux.HandleFunc("POST /api/catalog/upload", auth.RequireRole(auth.RoleAdmin)(catalog.UploadHandler(catalogStore, catalogQueue)))
-	mux.HandleFunc("GET /api/catalog/batches/{batchID}", auth.RequireRole(auth.RoleAdmin)(catalog.BatchProgressHandler(catalogStore)))
-	mux.HandleFunc("GET /api/catalog/libraries", auth.RequireRole(auth.RoleAdmin)(catalog.ListLibrariesHandler(catalogStore)))
-	mux.HandleFunc("GET /api/catalog/categories", auth.RequireRole(auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer)(catalog.ListTaxonomyHandler(catalogStore)))
-	mux.HandleFunc("POST /api/catalog/libraries/{libraryID}/categories", auth.RequireRole(auth.RoleAdmin)(catalog.AttachCategoryHandler(catalogStore)))
-	mux.HandleFunc("GET /api/organization/libraries", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ListOrganizationLibrariesHandler(catalogStore)))
-	mux.HandleFunc("POST /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", auth.RequireRole(auth.RoleArchitect)(catalog.MarkStrategicHandler(catalogStore)))
-	mux.HandleFunc("DELETE /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", auth.RequireRole(auth.RoleArchitect)(catalog.UnmarkStrategicHandler(catalogStore)))
-	mux.HandleFunc("POST /api/projects/upload", auth.RequireRole(auth.RoleArchitect)(catalog.ProjectUploadHandler(catalogStore, catalogQueue)))
-	mux.HandleFunc("GET /api/projects", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ListProjectsHandler(catalogStore)))
-	mux.HandleFunc("GET /api/projects/{projectID}/report", auth.RequireRole(auth.RoleArchitect, auth.RoleViewer)(catalog.ProjectReportHandler(catalogStore)))
-	mux.Handle("GET /", spaHandler(staticDir))
+	mux := newMux(deps{
+		Pool:      pool,
+		Users:     usersStore,
+		Catalog:   catalogStore,
+		Queue:     catalogQueue,
+		StaticDir: staticDir,
+	})
 
 	srv := &http.Server{
 		Addr:              addr,
