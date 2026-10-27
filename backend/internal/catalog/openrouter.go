@@ -23,6 +23,7 @@ const defaultOpenRouterModel = "glm-5.3"
 // doesn't know it, and validating/extending GitHub-topic-derived categories
 // against the curated taxonomy.
 type OpenRouterClient struct {
+	endpoint   string
 	apiKey     string
 	model      string
 	httpClient *http.Client
@@ -30,7 +31,8 @@ type OpenRouterClient struct {
 
 // NewOpenRouterClient reads OPENROUTER_API_KEY (required, fail-fast — same
 // convention as auth.LoadAccounts) and OPENROUTER_MODEL (optional, defaults
-// to defaultOpenRouterModel) from the environment.
+// to defaultOpenRouterModel) from the environment. OPENROUTER_BASE_URL is
+// unset in production; local E2E runs point it at the mock.
 func NewOpenRouterClient() (*OpenRouterClient, error) {
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
@@ -43,13 +45,12 @@ func NewOpenRouterClient() (*OpenRouterClient, error) {
 	}
 
 	return &OpenRouterClient{
+		endpoint:   envOr("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1") + "/chat/completions",
 		apiKey:     apiKey,
 		model:      model,
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}, nil
 }
-
-const openRouterChatEndpoint = "https://openrouter.ai/api/v1/chat/completions"
 
 // chatMessage and chatCompletionRequest/Response model the subset of the
 // OpenAI-compatible chat completions shape OpenRouter expects/returns.
@@ -87,7 +88,7 @@ func (c *OpenRouterClient) complete(ctx context.Context, prompt string) (string,
 		return "", fmt.Errorf("catalog: failed to encode openrouter request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, openRouterChatEndpoint, bytes.NewReader(encoded))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(encoded))
 	if err != nil {
 		return "", fmt.Errorf("catalog: failed to build openrouter request: %w", err)
 	}

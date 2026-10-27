@@ -11,6 +11,11 @@ if (existsSync('../.env')) process.loadEnvFile('../.env');
 const PORT = Number(process.env.E2E_PORT ?? 8080);
 const baseURL = `http://localhost:${PORT}`;
 
+// deps.dev, GitHub and OpenRouter are called server-side, so page.route() can't
+// see them; the E2E app build talks to this local mock instead.
+const MOCK_PORT = Number(process.env.E2E_EXTERNAL_APIS_MOCK_PORT ?? 3199);
+const mockURL = `http://localhost:${MOCK_PORT}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -31,23 +36,35 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
-  webServer: {
-    // Production-like: build the SPA, then build and run the Go binary that
-    // serves it plus /api, exactly as the Docker image does. Needs the local
-    // Postgres from docker-compose.yml (docker compose up -d db).
-    command: 'npm run build && cd ../backend && go build -o shelfmark ./cmd/shelfmark && ./shelfmark',
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-    env: {
-      PORT: String(PORT),
-      STATIC_DIR: '../web/build/client',
-      // A separate local database keeps E2E data out of the dev database.
-      DATABASE_URL: process.env.E2E_DATABASE_URL ?? '',
-      // The backend seeds accounts only into an empty users table, so a fresh
-      // E2E database gets the test user as its architect account.
-      ARCHITECT_EMAIL: process.env.E2E_USERNAME ?? '',
-      ARCHITECT_PASSWORD_HASH: process.env.E2E_PASSWORD_HASH ?? '',
+  webServer: [
+    {
+      command: 'node tests/e2e/mocks/external-apis-mock.mjs',
+      env: { EXTERNAL_APIS_MOCK_PORT: String(MOCK_PORT) },
+      url: mockURL,
+      reuseExistingServer: !process.env.CI,
     },
-  },
+    {
+      // Production-like: build the SPA, then build and run the Go binary that
+      // serves it plus /api, exactly as the Docker image does. Needs the local
+      // Postgres from docker-compose.yml (docker compose up -d db).
+      command: 'npm run build && cd ../backend && go build -o shelfmark ./cmd/shelfmark && ./shelfmark',
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+      env: {
+        PORT: String(PORT),
+        STATIC_DIR: '../web/build/client',
+        // A separate local database keeps E2E data out of the dev database.
+        DATABASE_URL: process.env.E2E_DATABASE_URL ?? '',
+        // The backend seeds accounts only into an empty users table, so a fresh
+        // E2E database gets the test user as its architect account.
+        ARCHITECT_EMAIL: process.env.E2E_USERNAME ?? '',
+        ARCHITECT_PASSWORD_HASH: process.env.E2E_PASSWORD_HASH ?? '',
+        // Point the categorization pipeline at the mock above.
+        DEPSDEV_BASE_URL: mockURL,
+        GITHUB_API_BASE_URL: mockURL,
+        OPENROUTER_BASE_URL: `${mockURL}/api/v1`,
+      },
+    },
+  ],
 });
