@@ -18,15 +18,18 @@ type TopicsFetcher interface {
 
 // GitHubClient implements TopicsFetcher via the GitHub REST API.
 type GitHubClient struct {
+	baseURL    string
 	token      string
 	httpClient *http.Client
 }
 
 // NewGitHubClient constructs a GitHubClient. GITHUB_TOKEN is optional —
 // its absence is not an error, since unauthenticated calls to the GitHub
-// API still work, just at a lower rate limit.
+// API still work, just at a lower rate limit. GITHUB_API_BASE_URL is unset in
+// production; local E2E runs point it at the mock.
 func NewGitHubClient() *GitHubClient {
 	return &GitHubClient{
+		baseURL:    envOr("GITHUB_API_BASE_URL", "https://api.github.com"),
 		token:      os.Getenv("GITHUB_TOKEN"),
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
@@ -45,7 +48,7 @@ func (c *GitHubClient) Topics(ctx context.Context, repo string) ([]string, error
 	}
 	owner, name := parts[0], parts[1]
 
-	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/%s", owner, name)
+	endpoint := fmt.Sprintf("%s/repos/%s/%s", c.baseURL, owner, name)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("catalog: failed to build github request: %w", err)
@@ -71,4 +74,12 @@ func (c *GitHubClient) Topics(ctx context.Context, repo string) ([]string, error
 	}
 
 	return decoded.Topics, nil
+}
+
+// envOr returns the environment variable key, or fallback when it is unset.
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

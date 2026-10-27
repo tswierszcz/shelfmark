@@ -23,12 +23,18 @@ type RepoFinder interface {
 // API, which tracks package-to-source-repository mappings for several
 // package ecosystems.
 type DepsDevClient struct {
+	baseURL    string
 	httpClient *http.Client
 }
 
 // NewDepsDevClient constructs a DepsDevClient with a sane default timeout.
+// DEPSDEV_BASE_URL is unset in production; local E2E runs point it at the
+// mock in web/tests/e2e/mocks/external-apis-mock.mjs.
 func NewDepsDevClient() *DepsDevClient {
-	return &DepsDevClient{httpClient: &http.Client{Timeout: 10 * time.Second}}
+	return &DepsDevClient{
+		baseURL:    envOr("DEPSDEV_BASE_URL", "https://api.deps.dev"),
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+	}
 }
 
 // depsDevResponse is the subset of the deps.dev package-version response
@@ -52,7 +58,7 @@ func (c *DepsDevClient) FindRepo(ctx context.Context, group, artifact, version s
 	// as a single path segment.
 	packageName := url.PathEscape(group + ":" + artifact)
 	versionSegment := url.PathEscape(version)
-	endpoint := fmt.Sprintf("https://api.deps.dev/v3/systems/maven/packages/%s/versions/%s", packageName, versionSegment)
+	endpoint := fmt.Sprintf("%s/v3/systems/maven/packages/%s/versions/%s", c.baseURL, packageName, versionSegment)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
