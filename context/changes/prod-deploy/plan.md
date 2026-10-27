@@ -415,12 +415,12 @@ A single `shared-cpu-1x` 512 MB Machine is enough for M1 traffic. The queue's 5 
 
 #### Automated
 
-- [x] 3.1 actionlint passes on ci.yml
-- [x] 3.2 Backend and web job commands pass locally
+- [x] 3.1 actionlint passes on ci.yml — cf52dbf
+- [x] 3.2 Backend and web job commands pass locally — cf52dbf
 
 #### Manual
 
-- [ ] 3.3 PR shows green backend/web checks and skipped deploy
+- [x] 3.3 PR shows green backend/web checks and skipped deploy — cf52dbf
 
 ### Phase 4: Provisioning and first manual production deploy
 
