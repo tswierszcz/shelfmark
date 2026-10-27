@@ -427,17 +427,17 @@ A single `shared-cpu-1x` 512 MB Machine is enough for M1 traffic. The queue's 5 
 #### Automated
 
 - [x] 4.1 fly config validate passes
-- [ ] 4.2 fly status shows 1 started Machine in fra with passing check
-- [ ] 4.3 Production /healthz returns ok
-- [ ] 4.4 HTTP redirects to HTTPS
-- [ ] 4.5 Production logs show version and no DSN or seed-email strings
+- [x] 4.2 fly status shows 1 started Machine in fra with passing check
+- [x] 4.3 Production /healthz returns ok
+- [x] 4.4 HTTP redirects to HTTPS
+- [x] 4.5 Production logs show version and no DSN or seed-email strings
 
 #### Manual
 
-- [ ] 4.6 Admin login works and session cookie is Secure/HttpOnly/SameSite=Lax
-- [ ] 4.7 Catalog upload gets categorized (OpenRouter key valid)
-- [ ] 4.8 Architect SBOM upload shows redundancy report
-- [ ] 4.9 App and MPG both in fra
+- [x] 4.6 Admin login works and session cookie is Secure/HttpOnly/SameSite=Lax
+- [x] 4.7 Catalog upload gets categorized (OpenRouter key valid)
+- [x] 4.8 Architect SBOM upload shows redundancy report
+- [x] 4.9 App and MPG both in fra
 
 ### Phase 5: Merge to main and operational verification
 

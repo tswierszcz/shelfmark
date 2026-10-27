@@ -57,7 +57,7 @@ Human-run, once. Check each command with `fly <cmd> --help` first.
 4. Re-check MPG's release status, then create the cluster in `fra` on PG 16 with the smallest plan and attach it (sets `DATABASE_URL`): `fly mpg create` then `fly mpg attach` **(verify on first use: flags, plan names)**.
 5. Stage the remaining secrets so they apply on the first deploy: `fly secrets set --stage SESSION_SECRET=... OPENROUTER_API_KEY=... ADMIN_EMAIL=... ADMIN_PASSWORD_HASH='...' ...` (see [Secrets](#secrets)).
 6. First deploy from a clean working tree: see [Deploy](#deploy) → Manual.
-7. Smoke test: `curl -fsS https://shelfmark-tsw.fly.dev/healthz` returns `ok`; log in as admin and check the `shelfmark_session` cookie is `Secure; HttpOnly; SameSite=Lax`; upload a small catalog and confirm libraries get categorized (no 401 in logs); upload an SBOM as architect and see the redundancy report.
+7. Smoke test: `curl -fsS https://shelfmark-tsw.fly.dev/healthz` returns `ok`; log in as admin and check the `shelfmark_session` cookie is `Secure; HttpOnly; SameSite=Lax`; upload `docs/samples/smoke-catalog.csv` and confirm libraries get categorized (no 401 in logs); upload `docs/samples/smoke-sbom.cdx.json` as architect and see the redundancy report (jackson-databind/gson and guava/commons-lang3 overlap on purpose). Done 2026-10-27, first deploy of 55f360d.
 8. For CI: create a deploy token (`fly tokens create deploy`) and store it as the GitHub repo secret `FLY_API_TOKEN`.
 
 ## Deploy
@@ -122,7 +122,8 @@ Last drill: not yet run.
 
 ## Known limits
 
-- One Machine: brief downtime on every deploy and no failover. Running two Machines needs the double boot-sweep case tested first.
+- One Machine: brief downtime on every deploy and no failover. Running two Machines needs the double boot-sweep case tested first. **The first `fly deploy` of a new app creates 2 Machines (HA) by default**: pass `--ha=false` on that deploy, or run `fly scale count 1 --app shelfmark-tsw` right after (done on 2026-10-27). Later deploys keep the current count.
+- `GITHUB_TOKEN` is not set yet, so repo lookups use GitHub's anonymous limit (60 requests/hour). Add a read-only fine-grained token with `fly secrets set GITHUB_TOKEN=... --app shelfmark-tsw` before uploading large catalogs.
 - Migrations run on boot (no `release_command`); a bad one crash-loops the only Machine.
 - No staging app and no PR previews. Verify changes locally with the production image.
 - MPG major version (PG 16) is fixed; upgrading means dump and restore.
