@@ -1,7 +1,7 @@
 ---
 change_id: empty-batch-status
 title: Settle an empty upload batch as done instead of still processing
-status: implementing
+status: impl_reviewed
 created: 2026-10-27
 updated: 2026-10-27
 archived_at: null
