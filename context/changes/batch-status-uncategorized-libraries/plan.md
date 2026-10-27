@@ -192,19 +192,19 @@ The report is still refreshed on every outcome.
 
 #### Automated
 
-- [x] 1.1 Go build and vet pass
-- [x] 1.2 Catalog and route tests pass, including the new integration tests
-- [x] 1.3 New tests fail when the fix is reverted
+- [x] 1.1 Go build and vet pass — ad2e7dd
+- [x] 1.2 Catalog and route tests pass, including the new integration tests — ad2e7dd
+- [x] 1.3 New tests fail when the fix is reverted — ad2e7dd
 
 ### Phase 2: /redundancy UI
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes
-- [ ] 2.2 Production build passes
-- [ ] 2.3 No literal palette colors in touched route files
-- [ ] 2.4 E2E smoke passes
+- [x] 2.1 Typecheck passes
+- [x] 2.2 Production build passes
+- [x] 2.3 No literal palette colors in touched route files
+- [x] 2.4 E2E smoke passes
 
 #### Manual
 
-- [ ] 2.5 Uncategorizable SBOM shows done-with-issues line and Needs review badges
+- [x] 2.5 Uncategorizable SBOM shows done-with-issues line and Needs review badges
