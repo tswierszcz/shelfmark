@@ -78,7 +78,7 @@ The team shipped Shelfmark on one Fly Machine with MPG in `fra`. They read "mana
 - **Secrets**: `fly secrets set KEY=value` (stored encrypted in Fly's vault, set as env vars at boot, unreadable via the CLI after setting). Required: `DATABASE_URL` (set by `fly mpg attach`), `OPENROUTER_API_KEY`, `GITHUB_TOKEN` (if used), session secret, seed account env. To rotate, run `fly secrets set` again; it triggers a restart.
 - **Rollback**: `fly releases --image` to find the previous image ref, then `fly deploy --image <ref>` (verify the flags against `fly deploy --help`). Expect about 1–2 min. **Migrations don't roll back.** Keep migrations backward-compatible with the previous release.
 - **Approval**: A human runs anything that costs money or destroys data: creating or destroying the MPG cluster, `fly apps destroy`, changing the Machine size or plan, rotating the primary DB credentials, and the first production deploy. An agent may run `fly deploy` to an existing app after green CI, plus `fly logs`, `fly status`, `fly releases` and `fly secrets list` unattended.
-- **Logs**: Read-only via `fly logs --app shelfmark` (stdout, JSON from `obs.NewLogger`), `fly status`, `fly checks list`, `fly machine status <id>`. For Postgres: `fly mpg status` (verify the subcommand name).
+- **Logs**: Read-only via `fly logs --app shelfmark-tsw` (stdout, JSON from `obs.NewLogger`), `fly status`, `fly checks list`, `fly machine status <id>`. For Postgres: `fly mpg status` (verify the subcommand name).
 
 ## Risk Register
 
@@ -89,7 +89,7 @@ The team shipped Shelfmark on one Fly Machine with MPG in `fra`. They read "mana
 | Downtime on every deploy with a single Machine | Devil's advocate | H | L | Accept for M1 (small user base). Revisit with 2 Machines only after the double-sweep concurrency is tested. |
 | A bad boot migration crash-loops the only Machine | Pre-mortem | L | H | Keep migrations additive. Test `migrate up` against a copy first. Consider `release_command = "/app/shelfmark migrate"` later. |
 | Rolling back the image leaves the schema ahead | Devil's advocate | M | M | Expand-then-contract migrations. Rollback runbook in the prod-deploy change. |
-| `DATABASE_URL` password or seed email leaks into boot error logs (impl-review F3) | Pre-mortem | M | H | Redact the DSN and seed values in the `fatal()` paths before the first prod deploy. |
+| `DATABASE_URL` password or seed email leaks into boot error logs (impl-review F3) | Pre-mortem | M | H | Redact the DSN and seed values in the `fatal()` paths before the first prod deploy. **Done 2026-10-27** (prod-deploy p1: fixed parse messages in `Migrate`/`Connect`, seed error names the role). |
 | App and DB in different regions (latency + billed private traffic) | Unknown unknowns | L | M | `primary_region = "fra"`, and create MPG in `fra`. |
 | Postgres major version locked at creation | Unknown unknowns | M | L | Choose PG 16 to match dev and CI, or bump dev to 17 before creating MPG. |
 | Rollback command unverified | Research finding | M | M | Run `fly deploy --help` and do a dry rollback on the first deploy. Record the exact command in the runbook. **Done 2026-10-27:** `fly deploy --image <previous ref>` rolled back and forward in ~20 s each (`docs/runbook.md` → Rollback). |
@@ -105,7 +105,7 @@ The team shipped Shelfmark on one Fly Machine with MPG in `fra`. They read "mana
 2. Create the app without deploying: `fly launch --no-deploy --name shelfmark --region fra`. The existing root `Dockerfile` is reused. Then edit `fly.toml`: `internal_port = 8080`, `auto_stop_machines = "off"`, `min_machines_running = 1`, `kill_signal = "SIGTERM"`, `kill_timeout = 30`, and an HTTP check on `GET /healthz`.
 3. Create Postgres in the same region and attach it: `fly mpg create` (region `fra`, PG 16), then `fly mpg attach` to set the `DATABASE_URL` secret. Set the rest with `fly secrets set OPENROUTER_API_KEY=… …`.
 4. Deploy with a version stamp: `fly deploy --build-arg VERSION=$(git rev-parse --short HEAD)`. Migrations run on boot, and the queue's boot sweep re-enqueues orphaned libraries.
-5. Verify: `fly status`, `fly logs`, `curl https://shelfmark.fly.dev/healthz`, then one login → upload → report smoke test.
+5. Verify: `fly status`, `fly logs`, `curl https://shelfmark-tsw.fly.dev/healthz`, then one login → upload → report smoke test.
 
 ## Out of Scope
 

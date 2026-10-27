@@ -1,6 +1,6 @@
 # Shelfmark operations runbook
 
-Status: draft. Commands marked **(verify on first use)** were not yet run against a real Fly account. Replace each marker with the exact command that worked once it has been run.
+Status: verified 2026-10-27 (first deploy, CI deploy, rollback and restore drills all run against the real account).
 
 ## Overview
 
@@ -54,7 +54,9 @@ Human-run, once. Check each command with `fly <cmd> --help` first.
 1. Install `flyctl` and log in: `fly auth login` (a card is required; there is no free tier).
 2. Create the app, keeping the committed `fly.toml`: `fly apps create shelfmark-tsw --org personal` (done 2026-10-27; `shelfmark` was already taken on Fly, so the app and host use `shelfmark-tsw`).
 3. Validate the config: `fly config validate`.
-4. Re-check MPG's release status, then create the cluster in `fra` on PG 16 with the smallest plan and attach it (sets `DATABASE_URL`): `fly mpg create` then `fly mpg attach` **(verify on first use: flags, plan names)**.
+4. Re-check MPG's release status, then create the cluster in `fra` on PG 16 with the smallest plan and attach it (sets `DATABASE_URL`):
+   `fly mpg create --name shelfmark-db --org personal --region fra --plan Basic --pg-major-version 16 --volume-size 10`, then `fly mpg attach <cluster-id> --app shelfmark-tsw`.
+   Production cluster: `shelfmark-db`, ID `d2gznoq7ew80pkm8`, fra, Basic (shared-2x, 1 GB, $38/month + $0.28/GB storage), PG 16, 10 GB (created 2026-10-27).
 5. Stage the remaining secrets so they apply on the first deploy: `fly secrets set --stage SESSION_SECRET=... OPENROUTER_API_KEY=... ADMIN_EMAIL=... ADMIN_PASSWORD_HASH='...' ...` (see [Secrets](#secrets)).
 6. First deploy from a clean working tree: see [Deploy](#deploy) → Manual.
 7. Smoke test: `curl -fsS https://shelfmark-tsw.fly.dev/healthz` returns `ok`; log in as admin and check the `shelfmark_session` cookie is `Secure; HttpOnly; SameSite=Lax`; upload `docs/samples/smoke-catalog.csv` and confirm libraries get categorized (no 401 in logs); upload `docs/samples/smoke-sbom.cdx.json` as architect and see the redundancy report (jackson-databind/gson and guava/commons-lang3 overlap on purpose). Done 2026-10-27, first deploy of 55f360d.
@@ -73,7 +75,7 @@ The workflow is `.github/workflows/ci.yml`. The deploy job skips with a notice w
 **Manual.** From a clean working tree on the commit you want live:
 
 ```sh
-fly deploy --build-arg VERSION=$(git rev-parse --short HEAD)
+fly deploy --app shelfmark-tsw --build-arg VERSION=$(git rev-parse HEAD)
 ```
 
 Every deploy has a short outage: there is one Machine and the `rolling` strategy. Migrations run on boot; a failing migration crash-loops the Machine (see [Rollback](#rollback)).
@@ -94,7 +96,8 @@ curl -fsS https://shelfmark-tsw.fly.dev/healthz
 ```
 
 - Every log line carries `version`; confirm it matches the deployed sha.
-- Database: `fly mpg connect` or a local proxy, and `fly mpg status` **(verify on first use: subcommand names)**.
+- Database: `fly mpg list --org personal` (status, attached apps), `fly mpg status d2gznoq7ew80pkm8`, `fly mpg connect d2gznoq7ew80pkm8` (needs a local `psql`, see [Backup & restore](#backup--restore)) or `fly mpg proxy d2gznoq7ew80pkm8`.
+- Log `version` is the full commit sha for both CI and manual deploys.
 - A boot failure logs `db: ...` or `auth: ...` and exits 1. These messages never contain the `DATABASE_URL` password or seed emails.
 
 ## Rollback
