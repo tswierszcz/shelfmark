@@ -1,10 +1,10 @@
 ---
 change_id: batch-status-uncategorized-libraries
 title: Surface failed and uncategorized libraries in batch status and project report
-status: impl_reviewed
+status: archived
 created: 2026-10-27
 updated: 2026-10-27
-archived_at: null
+archived_at: 2026-10-27T18:21:54Z
 ---
 
 ## Notes
