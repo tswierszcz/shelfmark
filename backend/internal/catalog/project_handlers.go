@@ -153,7 +153,9 @@ type projectReportLibrary struct {
 // ProjectReportHandler returns a handler for GET
 // /api/projects/{projectID}/report: it computes the project's redundancy
 // report and groups it by library, each annotated with its categories and
-// their strategic/retire-candidate status. It responds 404 if projectID
+// their strategic/retire-candidate status. Every library recorded against
+// the project is listed; one without categories has categories: [] and its
+// status tells the client why. It responds 404 if projectID
 // does not name an existing project (a report for a nonexistent project is
 // a real error, unlike BatchProgressHandler's empty-map-on-unknown-batch
 // behavior, which is legitimate for a batch that simply has no libraries
@@ -201,9 +203,14 @@ func ProjectReportHandler(store *Store) http.HandlerFunc {
 				byID[row.LibraryID] = lib
 				order = append(order, row.LibraryID)
 			}
+			if row.CategoryID == nil {
+				// Uncategorized library: listed with categories: [] and
+				// its status, rather than dropped from the report.
+				continue
+			}
 			lib.Categories = append(lib.Categories, projectReportCategory{
-				CategoryID:      row.CategoryID,
-				CategoryName:    row.CategoryName,
+				CategoryID:      *row.CategoryID,
+				CategoryName:    *row.CategoryName,
 				Strategic:       row.Strategic,
 				RetireCandidate: row.RetireCandidate,
 			})

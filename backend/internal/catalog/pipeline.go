@@ -26,8 +26,9 @@ type Categorizer interface {
 // store.AttachCategory, with source "github" when a GitHub topic
 // case-insensitively matches the category name exactly, else "llm".
 //
-// If no RepoFinder resolves a repo, or the LLM returns zero confident
-// categories, the library is marked "needs_manual" and this returns nil —
+// If no RepoFinder resolves a repo, the LLM returns zero confident
+// categories, or none of the categories it returns is in the taxonomy (so
+// nothing gets attached), the library is marked "needs_manual" and this returns nil —
 // that's an expected cascade outcome, not a pipeline error. A non-nil
 // return means a transport/transient failure occurred somewhere in the
 // cascade; the caller (the worker pool queue) is responsible for retrying.
@@ -68,6 +69,7 @@ func ProcessLibrary(ctx context.Context, store *Store, repoFinders []RepoFinder,
 		return store.UpdateLibraryStatus(ctx, lib.ID, "needs_manual", &repo, nil)
 	}
 
+	attached := 0
 	for _, categoryName := range categories {
 		categoryID, ok := taxonomyIDByName(taxonomy, categoryName)
 		if !ok {
@@ -83,6 +85,12 @@ func ProcessLibrary(ctx context.Context, store *Store, repoFinders []RepoFinder,
 		if err := store.AttachCategory(ctx, lib.ID, categoryID, source); err != nil {
 			return fmt.Errorf("catalog: failed to attach category %q to %q: %w", categoryName, lib.Purl, err)
 		}
+		attached++
+	}
+	if attached == 0 {
+		// "categorized" with no category would read as success while the
+		// library is invisible to every category-based view.
+		return store.UpdateLibraryStatus(ctx, lib.ID, "needs_manual", &repo, nil)
 	}
 
 	return store.UpdateLibraryStatus(ctx, lib.ID, "categorized", &repo, nil)
