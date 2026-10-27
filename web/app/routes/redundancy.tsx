@@ -20,12 +20,11 @@ const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
 const POLL_INTERVAL_MS = 2000;
 const POLL_MAX_DURATION_MS = 60_000;
 
+// An empty progress map is settled: the upload writes its libraries before
+// responding, so a batch with no libraries means every purl was already in
+// the catalog and nothing was enqueued.
 function isBatchSettled(progress: BatchProgress): boolean {
-  const statuses = Object.keys(progress);
-  if (statuses.length === 0) {
-    return false;
-  }
-  return statuses.every((status) => SETTLED_STATUSES.has(status));
+  return Object.keys(progress).every((status) => SETTLED_STATUSES.has(status));
 }
 
 type PollOutcome = "settled" | "timeout" | "error";
@@ -46,6 +45,10 @@ function describeBatch(
   }
   if (outcome === "timeout") {
     return { text: " — still processing", problem: false };
+  }
+
+  if (progress && Object.keys(progress).length === 0) {
+    return { text: " — done: no new libraries to categorize", problem: false };
   }
 
   const needReview = progress?.needs_manual ?? 0;
