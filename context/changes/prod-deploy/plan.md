@@ -443,12 +443,12 @@ A single `shared-cpu-1x` 512 MB Machine is enough for M1 traffic. The queue's 5 
 
 #### Automated
 
-- [x] 5.1 PR merged: release commit is on main
-- [x] 5.2 CI run on main succeeds on all three jobs
-- [x] 5.3 CI-deployed version equals merge commit and /healthz ok
+- [x] 5.1 PR merged: release commit is on main — a11b6ac
+- [x] 5.2 CI run on main succeeds on all three jobs — a11b6ac
+- [x] 5.3 CI-deployed version equals merge commit and /healthz ok — a11b6ac
 
 #### Manual
 
-- [x] 5.4 Rollback drill done and recorded in runbook
-- [x] 5.5 Backup restore drill done, temp cluster destroyed, recorded in runbook
-- [x] 5.6 Final production smoke test passes
+- [x] 5.4 Rollback drill done and recorded in runbook — a11b6ac
+- [x] 5.5 Backup restore drill done, temp cluster destroyed, recorded in runbook — a11b6ac
+- [x] 5.6 Final production smoke test passes — a11b6ac
