@@ -143,6 +143,10 @@ export default function KitchenSinkRedundancy() {
           <p>
             Batch <span className="font-mono">fixture-batch-id</span> — still processing
           </p>
+          <p>
+            Batch <span className="font-mono">fixture-batch-id</span> — done: no new libraries to
+            categorize
+          </p>
           <table className="text-left text-sm">
             <tbody>
               <tr className="border-b border-rule/50">
