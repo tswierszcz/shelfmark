@@ -99,26 +99,28 @@ curl -fsS https://shelfmark-tsw.fly.dev/healthz
 
 ## Rollback
 
-**(verify on first use)** — the exact commands get recorded here after the rollback drill.
+Verified by a drill on 2026-10-27 (v2 → v1 image → back to v2; each step ~20 s including the single-Machine restart).
 
-1. Find the previous image reference: `fly releases --image`.
-2. Deploy it: `fly deploy --image <previous-ref>`. Expect about 1–2 min.
-3. Confirm `/healthz` returns `ok` and `fly logs` shows the older `version`.
-4. To roll forward again, re-run the CI deploy or `fly deploy --image <current-ref>`.
+1. Find the previous image reference: `fly releases --app shelfmark-tsw --image`.
+2. Deploy it: `fly deploy --app shelfmark-tsw --image registry.fly.io/shelfmark-tsw:deployment-<id>`. No build happens; it only replaces the Machine's image (~20 s, brief outage).
+3. Confirm `curl -fsS https://shelfmark-tsw.fly.dev/healthz` returns `ok` and `fly logs --app shelfmark-tsw --no-tail` shows the older `version` on the `listening` line.
+4. To roll forward again, deploy the newer image the same way, or re-run the CI deploy for the commit on `main`.
 
 The schema is not rolled back. If the newer release ran a non-additive migration, the old image may fail on it; fix forward instead.
 
 ## Backup & restore
 
-MPG takes backups automatically. Its GA status is unconfirmed, so a restore must be tested once before relying on it.
+MPG takes backups automatically (daily full, plus diff/incremental). Its GA status is unconfirmed, so restores are drilled. A restore always creates a **new** cluster and leaves the source untouched.
 
-**(verify on first use)** — the exact commands get recorded here after the restore drill.
+1. Optionally take a fresh backup and list them: `fly mpg backup create <cluster-id>`, `fly mpg backup list <cluster-id>`.
+2. Restore into a temporary cluster: `fly mpg restore <cluster-id> --backup-id <id> --name shelfmark-db-restore-drill` (or `--pitr-time <RFC3339>` for point-in-time). It is billed separately while it exists; in the drill it was ready in 71 s.
+3. Compare row counts with production through `fly mpg connect <cluster-id>`, which needs a local `psql` (any `psql` on PATH works, including a small wrapper that runs `docker run --rm -i --network host postgres:16-alpine psql "$@"`):
+   `SELECT 'users', count(*) FROM users UNION ALL SELECT 'libraries', count(*) FROM libraries UNION ALL SELECT 'projects', count(*) FROM projects UNION ALL SELECT 'project_libraries', count(*) FROM project_libraries;`
+4. Destroy the temporary cluster (human approves): `fly mpg destroy <restored-cluster-id>`.
 
-1. List backups and restore the latest into a new temporary cluster or fork with `fly mpg` (check `fly mpg --help` for the backup/restore subcommands).
-2. Connect via `fly mpg connect` or a proxy and compare row counts of `users`, `libraries` and `projects` with production.
-3. Destroy the temporary cluster (human; it is billed while it exists).
+To actually recover production, restore into a new cluster as above, then point the app at it (`fly mpg detach` the old one, `fly mpg attach` the new one, which updates `DATABASE_URL` and restarts the Machine).
 
-Last drill: not yet run.
+Last drill: 2026-10-27, full backup `20261027-124033F` restored into `shelfmark-db-restore-drill` (fra, Basic); row counts matched production exactly (users 3, libraries 10, projects 4, project_libraries 27); temporary cluster destroyed afterwards.
 
 ## Known limits
 
