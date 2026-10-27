@@ -184,6 +184,11 @@ The report is still refreshed on every outcome.
 - Lesson: `context/foundation/lessons.md` (nil slices marshal as `null`)
 - E2E smoke: `web/tests/e2e/sbom-upload-report.spec.ts`
 
+## Review Addendum
+
+- 2026-10-27 impl-review F1: the status-to-badge mapping planned inline in `redundancy.tsx` (Phase 2 §3) lives in a shared component, `web/app/components/library-status-badge.tsx` (`LibraryStatusBadge`). It is used by `redundancy.tsx` and the kitchen sink, and its mapping is unchanged.
+- 2026-10-27 impl-review F2: `web/tests/e2e/sbom-upload-report.spec.ts` now waits for the batch line to settle and then asserts `— done`, so an incomplete batch fails with its real status.
+
 ## Progress
 
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles. See `references/progress-format.md`.
