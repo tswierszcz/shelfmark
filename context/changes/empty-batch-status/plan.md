@@ -73,10 +73,10 @@ Uploading an SBOM of only known libraries shows `Batch <id> — done: no new lib
 
 #### Automated
 
-- [x] 1.1 Catalog tests pass
-- [x] 1.2 Typecheck and build pass
-- [x] 1.3 E2E suite passes
-- [x] 1.4 The E2E re-upload assertion fails when the empty-batch handling is reverted
+- [x] 1.1 Catalog tests pass — 23ecc11
+- [x] 1.2 Typecheck and build pass — 23ecc11
+- [x] 1.3 E2E suite passes — 23ecc11
+- [x] 1.4 The E2E re-upload assertion fails when the empty-batch handling is reverted — 23ecc11
 
 #### Manual
 
