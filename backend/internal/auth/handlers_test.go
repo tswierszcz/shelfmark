@@ -291,3 +291,37 @@ func TestListUsers_5xx_LogsCause(t *testing.T) {
 		t.Fatalf("expected error attr to carry the pgx cause, got %q", errAttr)
 	}
 }
+
+func TestSeed_ErrorOmitsEmail(t *testing.T) {
+	const sentinel = "seed-sentinel@example.com"
+
+	pool := startTestPostgres(t)
+	store := NewUsersStore(pool)
+	ctx := context.Background()
+
+	// SeedFromEnvIfEmpty returns early when users has rows, so guarantee the
+	// empty table; this test's own throwaway container isolates the changes.
+	if _, err := pool.Exec(ctx, `DELETE FROM users`); err != nil {
+		t.Fatalf("failed to clear users: %v", err)
+	}
+	// Make the insert itself fail for the admin account only.
+	if _, err := pool.Exec(ctx,
+		`ALTER TABLE users ADD CONSTRAINT seed_reject CHECK (email <> '`+sentinel+`')`,
+	); err != nil {
+		t.Fatalf("failed to add seed_reject constraint: %v", err)
+	}
+
+	setAllAccountEnv(t)
+	t.Setenv("ADMIN_EMAIL", sentinel)
+
+	err := store.SeedFromEnvIfEmpty(ctx)
+	if err == nil {
+		t.Fatal("SeedFromEnvIfEmpty() expected an error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to seed admin account") {
+		t.Errorf("SeedFromEnvIfEmpty() error = %q, want it to name the admin role", err.Error())
+	}
+	if strings.Contains(err.Error(), sentinel) {
+		t.Errorf("SeedFromEnvIfEmpty() error leaks the seed email: %q", err.Error())
+	}
+}

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -17,7 +18,14 @@ func Connect(ctx context.Context) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("db: missing required env var DATABASE_URL")
 	}
 
-	pool, err := pgxpool.New(ctx, url)
+	// pgx only redacts passwords in parse errors on a best-effort basis, so
+	// the parse error is deliberately dropped rather than wrapped.
+	config, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, errors.New("db: failed to parse DATABASE_URL")
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("db: failed to create connection pool: %w", err)
 	}

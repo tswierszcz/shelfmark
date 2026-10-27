@@ -133,7 +133,8 @@ func (s *UsersStore) SeedFromEnvIfEmpty(ctx context.Context) error {
 			`INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3)`,
 			email, account.PasswordHash, account.Role,
 		); err != nil {
-			return fmt.Errorf("auth: failed to seed account %q: %w", email, err)
+			// Identify the account by role, never by email, to keep PII out of logs.
+			return fmt.Errorf("auth: failed to seed %s account: %w", account.Role, err)
 		}
 	}
 

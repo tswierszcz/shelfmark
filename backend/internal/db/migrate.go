@@ -26,9 +26,11 @@ func Migrate(databaseURL string) error {
 		return fmt.Errorf("db: failed to load embedded migrations: %w", err)
 	}
 
+	// The url.Parse error echoes the input, which would put the password in
+	// logs, so it is deliberately dropped rather than wrapped.
 	dbURL, err := pgx5DatabaseURL(databaseURL)
 	if err != nil {
-		return fmt.Errorf("db: failed to parse DATABASE_URL: %w", err)
+		return errors.New("db: failed to parse DATABASE_URL")
 	}
 
 	m, err := migrate.NewWithSourceInstance("iofs", sourceDriver, dbURL)

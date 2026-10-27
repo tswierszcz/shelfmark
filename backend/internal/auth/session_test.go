@@ -139,7 +139,7 @@ func TestVerifySession_ExpiredSession(t *testing.T) {
 
 func TestClearSession(t *testing.T) {
 	rec := httptest.NewRecorder()
-	ClearSession(rec)
+	ClearSession(rec, httptest.NewRequest(http.MethodPost, "/api/logout", nil))
 
 	cookies := rec.Result().Cookies()
 	var found *http.Cookie
@@ -153,6 +153,66 @@ func TestClearSession(t *testing.T) {
 	}
 	if found.MaxAge != -1 {
 		t.Errorf("expected MaxAge=-1, got %d", found.MaxAge)
+	}
+}
+
+func TestSessionCookie_SecureBehindProxy(t *testing.T) {
+	setSessionSecret(t)
+
+	tests := []struct {
+		name           string
+		tls            bool
+		forwardedProto string
+		wantSecure     bool
+	}{
+		{name: "plain HTTP, no header", wantSecure: false},
+		{name: "proxy forwards https", forwardedProto: "https", wantSecure: true},
+		{name: "proxy forwards http", forwardedProto: "http", wantSecure: false},
+		{name: "direct TLS", tls: true, wantSecure: true},
+	}
+
+	cookies := []struct {
+		name  string
+		write func(t *testing.T, w http.ResponseWriter, r *http.Request)
+	}{
+		{name: "login", write: func(t *testing.T, w http.ResponseWriter, r *http.Request) {
+			if err := IssueSession(w, r, "user@example.com", RoleViewer); err != nil {
+				t.Fatalf("IssueSession() unexpected error: %v", err)
+			}
+		}},
+		{name: "logout", write: func(t *testing.T, w http.ResponseWriter, r *http.Request) {
+			ClearSession(w, r)
+		}},
+	}
+
+	for _, tt := range tests {
+		for _, c := range cookies {
+			t.Run(tt.name+"/"+c.name, func(t *testing.T) {
+				req := httptest.NewRequest(http.MethodPost, "/api/login", nil)
+				if tt.tls {
+					req.TLS = &tls.ConnectionState{}
+				}
+				if tt.forwardedProto != "" {
+					req.Header.Set("X-Forwarded-Proto", tt.forwardedProto)
+				}
+				rec := httptest.NewRecorder()
+
+				c.write(t, rec, req)
+
+				var found *http.Cookie
+				for _, ck := range rec.Result().Cookies() {
+					if ck.Name == SessionCookieName {
+						found = ck
+					}
+				}
+				if found == nil {
+					t.Fatalf("expected %s cookie to be set", SessionCookieName)
+				}
+				if found.Secure != tt.wantSecure {
+					t.Errorf("Secure = %v, want %v", found.Secure, tt.wantSecure)
+				}
+			})
+		}
 	}
 }
 

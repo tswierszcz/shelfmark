@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 )
@@ -119,5 +120,27 @@ func TestConnectAndMigrate_Integration(t *testing.T) {
 	}
 	if found != 1 {
 		t.Fatalf("expected to find pgcrypto extension, got %d rows", found)
+	}
+}
+
+func TestMigrate_ParseErrorDoesNotLeakPassword(t *testing.T) {
+	const (
+		password = "s3cr3t-pw"
+		host     = "db.example.internal"
+	)
+	// The non-numeric port makes url.Parse fail before any connection attempt.
+	databaseURL := "postgres://app:" + password + "@" + host + ":notaport/shelfmark"
+
+	err := Migrate(databaseURL)
+	if err == nil {
+		t.Fatal("Migrate() expected an error for an unparseable DATABASE_URL, got nil")
+	}
+	if got, want := err.Error(), "db: failed to parse DATABASE_URL"; got != want {
+		t.Errorf("Migrate() error = %q, want %q", got, want)
+	}
+	for _, secret := range []string{password, host} {
+		if strings.Contains(err.Error(), secret) {
+			t.Errorf("Migrate() error leaks %q: %q", secret, err.Error())
+		}
 	}
 }

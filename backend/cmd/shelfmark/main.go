@@ -118,7 +118,8 @@ func main() {
 }
 
 // shutdownBudget bounds graceful shutdown (HTTP drain, queue drain, pool
-// close), staying inside Fly's default kill timeout.
+// close). It must stay below kill_timeout = 30 set in fly.toml (Fly's
+// default kill timeout is only 5 s).
 const shutdownBudget = 25 * time.Second
 
 // fatal logs a boot/serve failure at Error level and exits with status 1.

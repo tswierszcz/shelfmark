@@ -73,8 +73,19 @@ func UserHash(email string) string {
 	return hex.EncodeToString(mac.Sum(nil))[:12]
 }
 
+// requestIsHTTPS reports whether the request reached us over HTTPS, either
+// directly (TLS terminated here) or via a TLS-terminating proxy that sets
+// X-Forwarded-Proto: https.
+func requestIsHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+}
+
 // IssueSession sets a signed, stateless session cookie encoding email, role,
-// and expiry. The Secure attribute is set when the request arrived over HTTPS.
+// and expiry. The Secure attribute is set when the request arrived over HTTPS
+// (directly or behind a TLS-terminating proxy).
 func IssueSession(w http.ResponseWriter, r *http.Request, email string, role Role) error {
 	secret, err := sessionSecret()
 	if err != nil {
@@ -92,7 +103,7 @@ func IssueSession(w http.ResponseWriter, r *http.Request, email string, role Rol
 		Value:    value,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   requestIsHTTPS(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(sessionTTL.Seconds()),
 	})
@@ -146,13 +157,15 @@ func VerifySession(r *http.Request) (Session, error) {
 	return Session{Email: email, Role: Role(roleStr)}, nil
 }
 
-// ClearSession overwrites the session cookie so the browser discards it.
-func ClearSession(w http.ResponseWriter) {
+// ClearSession overwrites the session cookie so the browser discards it. The
+// deletion cookie carries the same attributes as the cookie it clears.
+func ClearSession(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   requestIsHTTPS(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})

@@ -77,7 +77,7 @@ func LoginHandler(store *UsersStore) http.HandlerFunc {
 // session cookie and responds with 204 No Content.
 func LogoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ClearSession(w)
+		ClearSession(w, r)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
