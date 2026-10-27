@@ -400,23 +400,23 @@ A single `shared-cpu-1x` 512 MB Machine is enough for M1 traffic. The queue's 5 
 
 #### Automated
 
-- [x] 2.1 Image builds with VERSION build-arg
-- [x] 2.2 Image serves /healthz ok against throwaway Postgres
-- [x] 2.3 Container logs are JSON with version=<short sha>
-- [x] 2.4 SIGTERM drains cleanly and exits 0 under 30 s
-- [x] 2.5 Build context contains no .env, context/, .git, .claude or test.csv paths
+- [x] 2.1 Image builds with VERSION build-arg — 3482203
+- [x] 2.2 Image serves /healthz ok against throwaway Postgres — 3482203
+- [x] 2.3 Container logs are JSON with version=<short sha> — 3482203
+- [x] 2.4 SIGTERM drains cleanly and exits 0 under 30 s — 3482203
+- [x] 2.5 Build context contains no .env, context/, .git, .claude or test.csv paths — 3482203
 
 #### Manual
 
-- [x] 2.6 fly.toml values reviewed against infrastructure.md
-- [x] 2.7 Runbook draft reviewed
+- [x] 2.6 fly.toml values reviewed against infrastructure.md — 3482203
+- [x] 2.7 Runbook draft reviewed — 3482203
 
 ### Phase 3: CI/CD workflow
 
 #### Automated
 
-- [ ] 3.1 actionlint passes on ci.yml
-- [ ] 3.2 Backend and web job commands pass locally
+- [x] 3.1 actionlint passes on ci.yml
+- [x] 3.2 Backend and web job commands pass locally
 
 #### Manual
 

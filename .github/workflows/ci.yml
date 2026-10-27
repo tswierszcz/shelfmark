@@ -1,0 +1,77 @@
+# CI/CD for Shelfmark. Every PR and every push to main runs the same checks as
+# the local hooks (go vet + go test, web typecheck + build). A push to main then
+# deploys to Fly.io with VERSION set to the commit sha (see docs/runbook.md,
+# "Deploy"). The deploy job skips with a notice when FLY_API_TOKEN is not set.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    # Catalog integration tests start postgres:16-alpine with `docker run`
+    # (Docker is preinstalled on ubuntu-latest); they take ~3 min locally.
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: go vet ./...
+      - run: go test ./...
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  deploy:
+    needs: [backend, web]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One deploy at a time; a newer push waits instead of cancelling a live rollout.
+    concurrency:
+      group: fly-deploy
+      cancel-in-progress: false
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      # secrets.* is not allowed in step `if:`, so test the mapped env var instead.
+      - id: token
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::notice::FLY_API_TOKEN is not set; skipping deploy."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.token.outputs.has_token == 'true'
+        uses: actions/checkout@v7
+      - if: steps.token.outputs.has_token == 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
+      - if: steps.token.outputs.has_token == 'true'
+        run: flyctl deploy --remote-only --build-arg VERSION=${{ github.sha }}
