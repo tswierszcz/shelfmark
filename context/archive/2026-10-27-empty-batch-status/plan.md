@@ -80,4 +80,4 @@ Uploading an SBOM of only known libraries shows `Batch <id> — done: no new lib
 
 #### Manual
 
-- [ ] 1.5 Production re-upload shows the no-new-libraries line
+- [x] 1.5 Production re-upload shows the no-new-libraries line — 23ecc11
