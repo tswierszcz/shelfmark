@@ -426,29 +426,29 @@ A single `shared-cpu-1x` 512 MB Machine is enough for M1 traffic. The queue's 5 
 
 #### Automated
 
-- [x] 4.1 fly config validate passes
-- [x] 4.2 fly status shows 1 started Machine in fra with passing check
-- [x] 4.3 Production /healthz returns ok
-- [x] 4.4 HTTP redirects to HTTPS
-- [x] 4.5 Production logs show version and no DSN or seed-email strings
+- [x] 4.1 fly config validate passes — a8e0751
+- [x] 4.2 fly status shows 1 started Machine in fra with passing check — a8e0751
+- [x] 4.3 Production /healthz returns ok — a8e0751
+- [x] 4.4 HTTP redirects to HTTPS — a8e0751
+- [x] 4.5 Production logs show version and no DSN or seed-email strings — a8e0751
 
 #### Manual
 
-- [x] 4.6 Admin login works and session cookie is Secure/HttpOnly/SameSite=Lax
-- [x] 4.7 Catalog upload gets categorized (OpenRouter key valid)
-- [x] 4.8 Architect SBOM upload shows redundancy report
-- [x] 4.9 App and MPG both in fra
+- [x] 4.6 Admin login works and session cookie is Secure/HttpOnly/SameSite=Lax — a8e0751
+- [x] 4.7 Catalog upload gets categorized (OpenRouter key valid) — a8e0751
+- [x] 4.8 Architect SBOM upload shows redundancy report — a8e0751
+- [x] 4.9 App and MPG both in fra — a8e0751
 
 ### Phase 5: Merge to main and operational verification
 
 #### Automated
 
-- [ ] 5.1 PR merged: release commit is on main
-- [ ] 5.2 CI run on main succeeds on all three jobs
-- [ ] 5.3 CI-deployed version equals merge commit and /healthz ok
+- [x] 5.1 PR merged: release commit is on main — a11b6ac
+- [x] 5.2 CI run on main succeeds on all three jobs — a11b6ac
+- [x] 5.3 CI-deployed version equals merge commit and /healthz ok — a11b6ac
 
 #### Manual
 
-- [ ] 5.4 Rollback drill done and recorded in runbook
-- [ ] 5.5 Backup restore drill done, temp cluster destroyed, recorded in runbook
-- [ ] 5.6 Final production smoke test passes
+- [x] 5.4 Rollback drill done and recorded in runbook — a11b6ac
+- [x] 5.5 Backup restore drill done, temp cluster destroyed, recorded in runbook — a11b6ac
+- [x] 5.6 Final production smoke test passes — a11b6ac
