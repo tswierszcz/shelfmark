@@ -802,3 +802,39 @@ func TestProjectUpload_BatchProgressReportsLibrariesThatNeedReviewOrFailed(t *te
 		t.Fatalf("expected all 3 uploaded libraries in the report, got %+v", report)
 	}
 }
+
+// The /redundancy page settles a batch whose progress is {} as "no new
+// libraries to categorize"; that is only safe because a re-upload of known
+// purls creates nothing under the new batch while the report still lists them.
+func TestProjectUpload_AllPurlsKnown_BatchProgressIsEmpty(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	queue := &recordingEnqueuer{}
+	ctx := context.Background()
+
+	t.Setenv("SESSION_SECRET", "test-secret")
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
+
+	doProjectUpload(t, store, queue, cookie, "Known Purls Project", "sbom.json", []byte(projectFixtureSBOM))
+	second := doProjectUpload(t, store, queue, cookie, "Known Purls Project", "sbom.json", []byte(projectFixtureSBOM))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/catalog/batches/"+second.BatchID, nil)
+	req.SetPathValue("batchID", second.BatchID)
+	rec := httptest.NewRecorder()
+	BatchProgressHandler(store)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec.Body.String() != "{}\n" {
+		t.Fatalf("expected empty progress for a batch of known purls, got %q", rec.Body.String())
+	}
+
+	report, err := store.ProjectReport(ctx, second.ProjectID)
+	if err != nil {
+		t.Fatalf("ProjectReport failed: %v", err)
+	}
+	if len(report) != 3 {
+		t.Fatalf("expected the report to still list all 3 libraries, got %+v", report)
+	}
+}

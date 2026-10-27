@@ -1,6 +1,7 @@
 // Risk: sbom-upload-report-smoke — an architect uploads a project SBOM with
 // libraries the catalog has never seen, and the report for that project lists
-// every direct library with the category the categorization pipeline assigned.
+// every direct library with the category the categorization pipeline assigned;
+// re-uploading it settles at once as "no new libraries to categorize".
 // Real: auth (storageState), routing, upload API, queue, Postgres, report UI.
 // Mocked: deps.dev, GitHub and OpenRouter (server-side calls, see
 // tests/e2e/mocks/external-apis-mock.mjs). Modeled on seed.spec.ts.
@@ -87,4 +88,11 @@ test('uploaded SBOM libraries appear in the project report with their pipeline c
     await expect(row.getByRole('cell', { name: 'Yes', exact: true })).toBeVisible();
     await expect(row.getByRole('cell', { name: category, exact: true })).toBeVisible();
   }
+
+  // Re-uploading the same SBOM finds every purl already in the catalog, so the
+  // new batch has no libraries. It must settle at once as "nothing new", not
+  // poll until the 60 s timeout and claim "still processing".
+  await page.getByRole('button', { name: 'Upload' }).click();
+  await expect(batchLine).toHaveText(/^Batch .+ — done: no new libraries to categorize$/, { timeout: 10_000 });
+  await expect(reportRows).toHaveCount(libraries.length);
 });
