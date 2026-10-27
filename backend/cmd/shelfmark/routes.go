@@ -34,6 +34,9 @@ type route struct {
 func routes(d deps) []route {
 	admin := []auth.Role{auth.RoleAdmin}
 	architect := []auth.Role{auth.RoleArchitect}
+	// adminArchitect lets the architect who uploads a project SBOM poll its
+	// categorization batch, alongside admins polling catalog uploads.
+	adminArchitect := []auth.Role{auth.RoleAdmin, auth.RoleArchitect}
 	architectViewer := []auth.Role{auth.RoleArchitect, auth.RoleViewer}
 	everyone := []auth.Role{auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer}
 
@@ -45,7 +48,7 @@ func routes(d deps) []route {
 		{"POST", "/api/users", admin, auth.CreateUserHandler(d.Users)},
 		{"GET", "/api/users", admin, auth.ListUsersHandler(d.Users)},
 		{"POST", "/api/catalog/upload", admin, catalog.UploadHandler(d.Catalog, d.Queue)},
-		{"GET", "/api/catalog/batches/{batchID}", admin, catalog.BatchProgressHandler(d.Catalog)},
+		{"GET", "/api/catalog/batches/{batchID}", adminArchitect, catalog.BatchProgressHandler(d.Catalog)},
 		{"GET", "/api/catalog/libraries", admin, catalog.ListLibrariesHandler(d.Catalog)},
 		{"GET", "/api/catalog/categories", everyone, catalog.ListTaxonomyHandler(d.Catalog)},
 		{"POST", "/api/catalog/libraries/{libraryID}/categories", admin, catalog.AttachCategoryHandler(d.Catalog)},

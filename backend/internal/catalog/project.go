@@ -27,7 +27,9 @@ type ProjectLibraryEntry struct {
 
 // ProjectReportRow is one (library, category) pair of a project's
 // redundancy report, as returned by ProjectReport. A library attached to
-// multiple categories produces multiple rows.
+// multiple categories produces multiple rows; a library with no categories
+// (still processing, needs_manual or failed) produces one row with nil
+// CategoryID/CategoryName, so it is never hidden from the report.
 type ProjectReportRow struct {
 	LibraryID       string  `json:"library_id"`
 	Purl            string  `json:"purl"`
@@ -36,8 +38,8 @@ type ProjectReportRow struct {
 	GithubRepo      *string `json:"github_repo"`
 	Status          string  `json:"status"`
 	IsDirect        bool    `json:"is_direct"`
-	CategoryID      string  `json:"category_id"`
-	CategoryName    string  `json:"category_name"`
+	CategoryID      *string `json:"category_id"`
+	CategoryName    *string `json:"category_name"`
 	Strategic       bool    `json:"strategic"`
 	RetireCandidate bool    `json:"retire_candidate"`
 }
@@ -185,7 +187,8 @@ func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
 
 // ProjectReport computes projectID's redundancy report: one row per
 // (library, category) pair of every library recorded against the project,
-// with RetireCandidate set for a direct library that is not itself the
+// plus one category-less row for each library with no categories, with
+// RetireCandidate set for a direct library that is not itself the
 // strategic pick in a category some library (not necessarily this one) has
 // already been reviewed for.
 func (s *Store) ProjectReport(ctx context.Context, projectID string) ([]ProjectReportRow, error) {
@@ -199,8 +202,8 @@ func (s *Store) ProjectReport(ctx context.Context, projectID string) ([]ProjectR
 		        c.id, c.name, (sm.library_id IS NOT NULL) AS strategic
 		 FROM project_libraries pl
 		 JOIN libraries l ON l.id = pl.library_id
-		 JOIN library_categories lc ON lc.library_id = l.id
-		 JOIN categories c ON c.id = lc.category_id
+		 LEFT JOIN library_categories lc ON lc.library_id = l.id
+		 LEFT JOIN categories c ON c.id = lc.category_id
 		 LEFT JOIN strategic_marks sm
 		        ON sm.library_id = l.id AND sm.category_id = c.id AND sm.active
 		 WHERE pl.project_id = $1
@@ -221,7 +224,7 @@ func (s *Store) ProjectReport(ctx context.Context, projectID string) ([]ProjectR
 		); err != nil {
 			return nil, fmt.Errorf("catalog: failed to scan project report row: %w", err)
 		}
-		row.RetireCandidate = row.IsDirect && reviewedCategories[row.CategoryID] && !row.Strategic
+		row.RetireCandidate = row.CategoryID != nil && row.IsDirect && reviewedCategories[*row.CategoryID] && !row.Strategic
 		report = append(report, row)
 	}
 	if err := rows.Err(); err != nil {

@@ -241,3 +241,36 @@ func TestProcessLibrary_FinderError_ReturnsErrorWithoutStatusChange(t *testing.T
 		t.Fatalf("expected status to remain %q on transient error, got %+v", "pending", got)
 	}
 }
+
+func TestProcessLibrary_ConfidentButNoTaxonomyMatch_MarksNeedsManual(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	lib := seedOneLibrary(t, store, "55555555-5555-5555-5555-555555555556",
+		NewLibrary{Purl: "pkg:maven/com.example/qux@1.0.0", Name: "qux", Ecosystem: "maven"})
+
+	finders := []RepoFinder{&fakeRepoFinder{repo: "example/qux", found: true}}
+	topics := &fakeTopicsFetcher{topics: []string{"some-topic"}}
+	// Confident, but every name is outside the taxonomy: nothing attaches.
+	llm := &fakeCategorizer{categories: []string{"not-a-taxonomy-category"}, confident: true}
+
+	if err := ProcessLibrary(ctx, store, finders, topics, llm, lib); err != nil {
+		t.Fatalf("ProcessLibrary failed: %v", err)
+	}
+
+	got, err := store.ListLibraries(ctx, LibraryFilter{BatchID: lib.UploadBatchID})
+	if err != nil {
+		t.Fatalf("ListLibraries failed: %v", err)
+	}
+	if len(got) != 1 || got[0].Status != "needs_manual" {
+		t.Fatalf("expected status %q, got %+v", "needs_manual", got)
+	}
+	var attached int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM library_categories WHERE library_id = $1`, lib.ID).Scan(&attached); err != nil {
+		t.Fatalf("count query failed: %v", err)
+	}
+	if attached != 0 {
+		t.Fatalf("expected no attached categories, got %d", attached)
+	}
+}
