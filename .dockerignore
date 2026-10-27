@@ -8,3 +8,8 @@ backend/shelfmark
 .env
 .env.*
 *.md
+# Local scratch data and editor/tooling state (never needed by the build;
+# keeps them out of the context uploaded to Fly's remote builder)
+test.csv
+.vscode
+.10x-cli.json

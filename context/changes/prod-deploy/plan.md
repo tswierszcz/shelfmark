@@ -388,28 +388,28 @@ A single `shared-cpu-1x` 512 MB Machine is enough for M1 traffic. The queue's 5 
 
 #### Automated
 
-- [x] 1.1 Named regression tests pass (migrate/connect/seed redaction, Secure cookie behind proxy)
-- [x] 1.2 Full backend suite passes (go vet + go test ./...)
-- [x] 1.3 Break check: reverting migrate.go fix turns its test red
+- [x] 1.1 Named regression tests pass (migrate/connect/seed redaction, Secure cookie behind proxy) — 4838ab7
+- [x] 1.2 Full backend suite passes (go vet + go test ./...) — 4838ab7
+- [x] 1.3 Break check: reverting migrate.go fix turns its test red — 4838ab7
 
 #### Manual
 
-- [x] 1.4 Local plain-HTTP login still works
+- [x] 1.4 Local plain-HTTP login still works — 4838ab7
 
 ### Phase 2: fly.toml and local production-image check
 
 #### Automated
 
-- [ ] 2.1 Image builds with VERSION build-arg
-- [ ] 2.2 Image serves /healthz ok against throwaway Postgres
-- [ ] 2.3 Container logs are JSON with version=<short sha>
-- [ ] 2.4 SIGTERM drains cleanly and exits 0 under 30 s
-- [ ] 2.5 Build context contains no .env, context/, .git, .claude or test.csv paths
+- [x] 2.1 Image builds with VERSION build-arg
+- [x] 2.2 Image serves /healthz ok against throwaway Postgres
+- [x] 2.3 Container logs are JSON with version=<short sha>
+- [x] 2.4 SIGTERM drains cleanly and exits 0 under 30 s
+- [x] 2.5 Build context contains no .env, context/, .git, .claude or test.csv paths
 
 #### Manual
 
-- [ ] 2.6 fly.toml values reviewed against infrastructure.md
-- [ ] 2.7 Runbook draft reviewed
+- [x] 2.6 fly.toml values reviewed against infrastructure.md
+- [x] 2.7 Runbook draft reviewed
 
 ### Phase 3: CI/CD workflow
 
