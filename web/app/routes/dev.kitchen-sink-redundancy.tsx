@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Logo } from "../components/logo";
 import { Button } from "../components/button";
 import { Badge } from "../components/badge";
+import { LibraryStatusBadge } from "../components/library-status-badge";
 
 function Section({
   title,
@@ -28,7 +29,7 @@ export default function KitchenSinkRedundancy() {
       <Logo className="mb-6" />
       <h1 className="text-xl font-semibold font-serif">Redundancy view — kitchen sink</h1>
       <p className="mt-1 text-sm text-ink-dim">
-        Reference page for the 7 UI states used across the redundancy report view. No auth
+        Reference page for the UI states used across the redundancy report view. No auth
         guard, no network calls — all data below is static fixture data.
       </p>
 
@@ -125,6 +126,45 @@ export default function KitchenSinkRedundancy() {
             <li className="rounded border border-rule px-2 py-1">categorized: 2</li>
             <li className="rounded border border-rule px-2 py-1">processing…: 3</li>
           </ul>
+        </div>
+      </Section>
+
+      <Section
+        title="8. Incomplete result"
+        caption="Batch lines and Categories-cell badges when libraries need review, failed or are still processing."
+      >
+        <div className="space-y-4 text-sm">
+          <p className="text-destructive">
+            Batch <span className="font-mono">fixture-batch-id</span> — done: 2 need review, 1 failed
+          </p>
+          <p className="text-destructive">
+            Batch <span className="font-mono">fixture-batch-id</span> — status unavailable
+          </p>
+          <p>
+            Batch <span className="font-mono">fixture-batch-id</span> — still processing
+          </p>
+          <table className="text-left text-sm">
+            <tbody>
+              <tr className="border-b border-rule/50">
+                <td className="py-2 pr-4 font-mono">pkg:npm/obscure-lib@0.1.0</td>
+                <td className="py-2 pr-4">
+                  <LibraryStatusBadge status="needs_manual" />
+                </td>
+              </tr>
+              <tr className="border-b border-rule/50">
+                <td className="py-2 pr-4 font-mono">pkg:npm/flaky-lib@2.0.0</td>
+                <td className="py-2 pr-4">
+                  <LibraryStatusBadge status="failed" />
+                </td>
+              </tr>
+              <tr className="border-b border-rule/50">
+                <td className="py-2 pr-4 font-mono">pkg:npm/new-lib@1.0.0</td>
+                <td className="py-2 pr-4">
+                  <LibraryStatusBadge status="pending" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </Section>
     </main>

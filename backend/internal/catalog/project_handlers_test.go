@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/tswierszcz/shelfmark/backend/internal/auth"
 	"github.com/tswierszcz/shelfmark/backend/internal/auth/authtest"
@@ -174,10 +176,15 @@ func TestProjectUploadHandler_NewProjectIngestsAndRecordsMembership(t *testing.T
 	if err != nil {
 		t.Fatalf("ProjectReport failed: %v", err)
 	}
-	// No categories attached yet (categorization hasn't run), so the report
-	// has no rows even though the project has library membership recorded.
-	if len(report) != 0 {
-		t.Fatalf("expected no report rows before categorization, got %+v", report)
+	// No categories attached yet (categorization hasn't run), but every
+	// recorded library is still listed: one category-less "pending" row each.
+	if len(report) != 3 {
+		t.Fatalf("expected 3 category-less report rows before categorization, got %+v", report)
+	}
+	for _, row := range report {
+		if row.CategoryID != nil || row.Status != "pending" {
+			t.Fatalf("expected a pending row with no category, got %+v", row)
+		}
 	}
 
 	projects, err := store.ListProjects(ctx)
@@ -634,5 +641,164 @@ func TestProjectReportHandler_NoLibrariesReturnsEmptyArrayNotNull(t *testing.T) 
 	// frontend .map() over the decoded response would crash on.
 	if rec.Body.String() != "[]\n" {
 		t.Fatalf("expected body %q, got %q", "[]\n", rec.Body.String())
+	}
+}
+
+func TestProjectReportHandler_ListsUncategorizedLibrariesWithStatus(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	projectID, direct1, direct2, transitive := setUpProjectReportFixture(t, store)
+
+	categories, err := store.ListTaxonomy(ctx)
+	if err != nil || len(categories) == 0 {
+		t.Fatalf("ListTaxonomy failed: err=%v categories=%+v", err, categories)
+	}
+	if err := store.AttachCategory(ctx, direct1.ID, categories[0].ID, "llm"); err != nil {
+		t.Fatalf("AttachCategory failed: %v", err)
+	}
+	if err := store.UpdateLibraryStatus(ctx, direct1.ID, "categorized", nil, nil); err != nil {
+		t.Fatalf("UpdateLibraryStatus(direct1) failed: %v", err)
+	}
+	if err := store.UpdateLibraryStatus(ctx, direct2.ID, "needs_manual", nil, nil); err != nil {
+		t.Fatalf("UpdateLibraryStatus(direct2) failed: %v", err)
+	}
+	detail := "openrouter returned status 503"
+	if err := store.UpdateLibraryStatus(ctx, transitive.ID, "failed", nil, &detail); err != nil {
+		t.Fatalf("UpdateLibraryStatus(transitive) failed: %v", err)
+	}
+
+	handler := ProjectReportHandler(store)
+	req := httptest.NewRequest(http.MethodGet, "/api/projects/"+projectID+"/report", nil)
+	req.SetPathValue("projectID", projectID)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Decode categories as raw JSON so a null list is told apart from [].
+	var resp []struct {
+		ID         string          `json:"id"`
+		Status     string          `json:"status"`
+		Categories json.RawMessage `json:"categories"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp) != 3 {
+		t.Fatalf("expected every project library in the report, got %d: %s", len(resp), rec.Body.String())
+	}
+
+	byID := map[string]int{}
+	for i, l := range resp {
+		byID[l.ID] = i
+	}
+	for _, want := range []struct {
+		lib    Library
+		status string
+	}{{direct2, "needs_manual"}, {transitive, "failed"}} {
+		i, ok := byID[want.lib.ID]
+		if !ok {
+			t.Fatalf("expected uncategorized library %s in report, got %s", want.lib.Purl, rec.Body.String())
+		}
+		if resp[i].Status != want.status {
+			t.Errorf("expected %s status %q, got %q", want.lib.Purl, want.status, resp[i].Status)
+		}
+		if string(resp[i].Categories) != "[]" {
+			t.Errorf("expected %s categories to be [], got %s", want.lib.Purl, resp[i].Categories)
+		}
+	}
+	if i, ok := byID[direct1.ID]; !ok || resp[i].Status != "categorized" || string(resp[i].Categories) == "[]" {
+		t.Fatalf("expected categorized direct1 with its category, got %s", rec.Body.String())
+	}
+}
+
+// purlCategorizer is a test-only Categorizer whose result depends on the
+// library's purl, so one batch can end in mixed statuses.
+type purlCategorizer struct {
+	results map[string]fakeCategorizer
+}
+
+func (p *purlCategorizer) Categorize(ctx context.Context, purl string, githubTopics []string, taxonomy []string) ([]string, bool, error) {
+	r := p.results[purl]
+	return r.categories, r.confident, r.err
+}
+
+func TestProjectUpload_BatchProgressReportsLibrariesThatNeedReviewOrFailed(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+
+	categories, err := store.ListTaxonomy(ctx)
+	if err != nil || len(categories) == 0 {
+		t.Fatalf("ListTaxonomy failed: err=%v categories=%+v", err, categories)
+	}
+
+	// One library per outcome: categorized, confident-but-outside-taxonomy
+	// (needs_manual), and a categorizer error on every attempt (failed).
+	llm := &purlCategorizer{results: map[string]fakeCategorizer{
+		"pkg:maven/com.fasterxml.jackson.core/jackson-core@2.15.0":     {categories: []string{categories[0].Name}, confident: true},
+		"pkg:maven/com.google.guava/guava@32.0.0":                      {categories: []string{"not-a-taxonomy-category"}, confident: true},
+		"pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0": {err: errors.New("openrouter returned status 503")},
+	}}
+	queue := NewQueue(store, []RepoFinder{&fakeRepoFinder{repo: "example/lib", found: true}}, &fakeTopicsFetcher{}, llm, 3)
+	t.Cleanup(func() { queue.Shutdown(context.Background()) })
+
+	t.Setenv("SESSION_SECRET", "test-secret")
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	resp := doProjectUpload(t, store, queue, cookie, "Mixed Outcome Project", "sbom.json", []byte(projectFixtureSBOM))
+
+	// Wait for the queue to settle every library (failed needs all retries).
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		progress, err := store.BatchProgress(ctx, resp.BatchID)
+		if err != nil {
+			t.Fatalf("BatchProgress failed: %v", err)
+		}
+		if progress["pending"] == 0 && progress["processing"] == 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("batch did not settle in time: %+v", progress)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/catalog/batches/"+resp.BatchID, nil)
+	req.SetPathValue("batchID", resp.BatchID)
+	rec := httptest.NewRecorder()
+	BatchProgressHandler(store)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var progress BatchProgress
+	if err := json.Unmarshal(rec.Body.Bytes(), &progress); err != nil {
+		t.Fatalf("failed to decode progress: %v", err)
+	}
+	want := BatchProgress{"categorized": 1, "needs_manual": 1, "failed": 1}
+	if len(progress) != len(want) {
+		t.Fatalf("expected progress %+v, got %+v", want, progress)
+	}
+	for status, n := range want {
+		if progress[status] != n {
+			t.Fatalf("expected progress %+v, got %+v", want, progress)
+		}
+	}
+
+	// The same mixed batch is fully visible in the project report.
+	report, err := store.ProjectReport(ctx, resp.ProjectID)
+	if err != nil {
+		t.Fatalf("ProjectReport failed: %v", err)
+	}
+	libs := map[string]string{}
+	for _, row := range report {
+		libs[row.Purl] = row.Status
+	}
+	if len(libs) != 3 {
+		t.Fatalf("expected all 3 uploaded libraries in the report, got %+v", report)
 	}
 }

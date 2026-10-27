@@ -68,8 +68,13 @@ test('uploaded SBOM libraries appear in the project report with their pipeline c
   });
   await page.getByRole('button', { name: 'Upload' }).click();
 
-  // Wait for the categorization batch to settle; the report then shows the project.
-  await expect(page.getByText(/^Batch .+ — done$/)).toBeVisible({ timeout: 30_000 });
+  // Wait for the categorization batch to settle, then require a clean "done":
+  // asserting the settled line's text makes an incomplete batch fail with its
+  // real status ("done: 3 need review") instead of a bare timeout.
+  const batchLine = page.getByText(/^Batch .+ — /);
+  await expect(batchLine).toBeVisible();
+  await expect(batchLine).not.toHaveText(/— processing…$/, { timeout: 30_000 });
+  await expect(batchLine).toHaveText(/^Batch .+ — done$/);
   await expect(
     page.getByRole('combobox', { name: 'Project' }).getByRole('option', { name: projectName, selected: true }),
   ).toBeAttached();

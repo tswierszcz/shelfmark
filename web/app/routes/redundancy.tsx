@@ -14,6 +14,7 @@ import { RequireAuth } from "../lib/require-auth";
 import { Nav } from "../components/nav";
 import { Button } from "../components/button";
 import { Badge } from "../components/badge";
+import { LibraryStatusBadge } from "../components/library-status-badge";
 
 const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
 const POLL_INTERVAL_MS = 2000;
@@ -25,6 +26,38 @@ function isBatchSettled(progress: BatchProgress): boolean {
     return false;
   }
   return statuses.every((status) => SETTLED_STATUSES.has(status));
+}
+
+type PollOutcome = "settled" | "timeout" | "error";
+
+// describeBatch turns the poll state into the batch line's suffix. "done"
+// alone means every library was categorized; anything that needs review or
+// failed is named, so an incomplete result never reads as plain success.
+function describeBatch(
+  polling: boolean,
+  outcome: PollOutcome | null,
+  progress: BatchProgress | null,
+): { text: string; problem: boolean } {
+  if (polling || outcome === null) {
+    return { text: " — processing…", problem: false };
+  }
+  if (outcome === "error") {
+    return { text: " — status unavailable", problem: true };
+  }
+  if (outcome === "timeout") {
+    return { text: " — still processing", problem: false };
+  }
+
+  const needReview = progress?.needs_manual ?? 0;
+  const failed = progress?.failed ?? 0;
+  const issues = [
+    needReview > 0 ? `${needReview} ${needReview === 1 ? "needs" : "need"} review` : null,
+    failed > 0 ? `${failed} failed` : null,
+  ].filter((part) => part !== null);
+  if (issues.length === 0) {
+    return { text: " — done", problem: false };
+  }
+  return { text: ` — done: ${issues.join(", ")}`, problem: true };
 }
 
 function RedundancyContent() {
@@ -39,6 +72,7 @@ function RedundancyContent() {
   const [batchId, setBatchId] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
   const [polling, setPolling] = useState(false);
+  const [pollOutcome, setPollOutcome] = useState<PollOutcome | null>(null);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsError, setProjectsError] = useState<string | null>(null);
@@ -98,6 +132,7 @@ function RedundancyContent() {
     const token = ++pollToken.current;
     const startedAt = Date.now();
     setPolling(true);
+    setPollOutcome(null);
 
     async function poll() {
       try {
@@ -112,6 +147,7 @@ function RedundancyContent() {
 
         if (settled || timedOut) {
           setPolling(false);
+          setPollOutcome(settled ? "settled" : "timeout");
           onSettled();
           return;
         }
@@ -122,6 +158,7 @@ function RedundancyContent() {
           return;
         }
         setPolling(false);
+        setPollOutcome("error");
         onSettled();
       }
     }
@@ -204,10 +241,15 @@ function RedundancyContent() {
 
           {batchId && (
             <div className="mt-4 text-sm">
-              <p>
-                Batch <span className="font-mono">{batchId}</span>
-                {polling ? " — processing…" : " — done"}
-              </p>
+              {(() => {
+                const batch = describeBatch(polling, pollOutcome, batchProgress);
+                return (
+                  <p className={batch.problem ? "text-destructive" : undefined}>
+                    Batch <span className="font-mono">{batchId}</span>
+                    {batch.text}
+                  </p>
+                );
+              })()}
               {batchProgress && (
                 <ul className="mt-1 flex flex-wrap gap-3">
                   {Object.entries(batchProgress).map(([status, count]) => (
@@ -272,7 +314,7 @@ function RedundancyContent() {
                       <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
                       <td className="py-2 pr-4">
                         {library.categories.length === 0 ? (
-                          "—"
+                          <LibraryStatusBadge status={library.status} />
                         ) : (
                           <ul className="space-y-1">
                             {library.categories.map((category) => (

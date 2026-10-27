@@ -25,7 +25,7 @@ var expectedRoles = map[string][]auth.Role{
 	"POST /api/users":                                    {auth.RoleAdmin},
 	"GET /api/users":                                     {auth.RoleAdmin},
 	"POST /api/catalog/upload":                           {auth.RoleAdmin},
-	"GET /api/catalog/batches/{batchID}":                 {auth.RoleAdmin},
+	"GET /api/catalog/batches/{batchID}":                 {auth.RoleAdmin, auth.RoleArchitect},
 	"GET /api/catalog/libraries":                         {auth.RoleAdmin},
 	"GET /api/catalog/categories":                        {auth.RoleAdmin, auth.RoleArchitect, auth.RoleViewer},
 	"POST /api/catalog/libraries/{libraryID}/categories": {auth.RoleAdmin},
