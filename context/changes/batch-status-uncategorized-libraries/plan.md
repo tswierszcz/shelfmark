@@ -200,11 +200,11 @@ The report is still refreshed on every outcome.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes
-- [x] 2.2 Production build passes
-- [x] 2.3 No literal palette colors in touched route files
-- [x] 2.4 E2E smoke passes
+- [x] 2.1 Typecheck passes — 4b1fc0b
+- [x] 2.2 Production build passes — 4b1fc0b
+- [x] 2.3 No literal palette colors in touched route files — 4b1fc0b
+- [x] 2.4 E2E smoke passes — 4b1fc0b
 
 #### Manual
 
-- [x] 2.5 Uncategorizable SBOM shows done-with-issues line and Needs review badges
+- [x] 2.5 Uncategorizable SBOM shows done-with-issues line and Needs review badges — 4b1fc0b
