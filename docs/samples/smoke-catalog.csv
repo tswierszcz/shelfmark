@@ -1,0 +1,9 @@
+purl
+pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.17.0
+pkg:maven/com.google.guava/guava@33.0.0
+pkg:maven/org.springframework/spring-core@6.1.0
+pkg:maven/org.apache.commons/commons-lang3@3.14.0
+pkg:maven/junit/junit@4.13.2
+pkg:maven/com.squareup.okhttp3/okhttp@4.12.0
+pkg:maven/org.slf4j/slf4j-api@2.0.13
+pkg:maven/com.google.code.gson/gson@2.10.1

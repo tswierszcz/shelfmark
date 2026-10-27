@@ -1,0 +1,35 @@
+# Go build output
+/backend/shelfmark
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Go workspace (local only)
+go.work
+go.work.sum
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Frontend (details in web/.gitignore)
+node_modules/
+
+# Bootstrapper temp directory
+/.bootstrap-scaffold/
+
+# Local Claude Code settings and course skill downloads (not published).
+# Project hooks are committed: settings.json + hooks/ (settings.local.json stays local).
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store

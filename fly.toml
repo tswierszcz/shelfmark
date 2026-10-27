@@ -1,0 +1,37 @@
+# Fly.io app configuration for Shelfmark. Source of truth for these values:
+# context/foundation/infrastructure.md. No secrets here; runtime secrets are
+# set with `fly secrets set` (see docs/runbook.md). VERSION is passed at deploy
+# time with `--build-arg VERSION=<git sha>`.
+
+app = "shelfmark-tsw"
+primary_region = "fra"
+
+# The app drains HTTP + the catalog queue on SIGTERM within a 25 s budget
+# (shutdownBudget in backend/cmd/shelfmark/main.go). Fly defaults to SIGINT
+# and 5 s, so both are set explicitly.
+kill_signal = "SIGTERM"
+kill_timeout = 30
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # One always-on Machine: the in-process queue must keep running between requests.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  # /healthz pings the DB and answers 200 without a redirect. The grace period
+  # covers boot-time migrations, which run before the server listens.
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
