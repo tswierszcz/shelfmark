@@ -1,10 +1,10 @@
 ---
 change_id: prod-deploy
 title: Prod deploy
-status: impl_reviewed
+status: archived
 created: 2026-10-27
 updated: 2026-10-27
-archived_at: null
+archived_at: 2026-10-27T13:31:14Z
 ---
 
 ## Notes
