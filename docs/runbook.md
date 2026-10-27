@@ -4,7 +4,7 @@ Status: draft. Commands marked **(verify on first use)** were not yet run agains
 
 ## Overview
 
-- **App**: `shelfmark` on Fly.io, served at https://shelfmark.fly.dev.
+- **App**: `shelfmark-tsw` on Fly.io, served at https://shelfmark-tsw.fly.dev.
 - **Compute**: one always-on `shared-cpu-1x` / 512 MB Machine in `fra`. Config lives in `fly.toml` (repo root).
 - **Database**: Fly Managed Postgres (MPG), PG 16, in `fra`. The major version is fixed at creation; there is no in-place upgrade.
 - **Image**: the root `Dockerfile` builds one distroless image. The Go binary serves the API and the built SPA on port 8080. `VERSION` (git sha) is baked in at build time and appears as `version` on every JSON log line.
@@ -52,12 +52,12 @@ fly secrets set ADMIN_PASSWORD_HASH="$2a$10$..."   # WRONG: hash is mangled
 Human-run, once. Check each command with `fly <cmd> --help` first.
 
 1. Install `flyctl` and log in: `fly auth login` (a card is required; there is no free tier).
-2. Create the app, keeping the committed `fly.toml`: `fly apps create shelfmark`. If the name is taken, choose another, update `app` in `fly.toml`, and use the new `*.fly.dev` host everywhere.
+2. Create the app, keeping the committed `fly.toml`: `fly apps create shelfmark-tsw --org personal` (done 2026-10-27; `shelfmark` was already taken on Fly, so the app and host use `shelfmark-tsw`).
 3. Validate the config: `fly config validate`.
 4. Re-check MPG's release status, then create the cluster in `fra` on PG 16 with the smallest plan and attach it (sets `DATABASE_URL`): `fly mpg create` then `fly mpg attach` **(verify on first use: flags, plan names)**.
 5. Stage the remaining secrets so they apply on the first deploy: `fly secrets set --stage SESSION_SECRET=... OPENROUTER_API_KEY=... ADMIN_EMAIL=... ADMIN_PASSWORD_HASH='...' ...` (see [Secrets](#secrets)).
 6. First deploy from a clean working tree: see [Deploy](#deploy) → Manual.
-7. Smoke test: `curl -fsS https://shelfmark.fly.dev/healthz` returns `ok`; log in as admin and check the `shelfmark_session` cookie is `Secure; HttpOnly; SameSite=Lax`; upload a small catalog and confirm libraries get categorized (no 401 in logs); upload an SBOM as architect and see the redundancy report.
+7. Smoke test: `curl -fsS https://shelfmark-tsw.fly.dev/healthz` returns `ok`; log in as admin and check the `shelfmark_session` cookie is `Secure; HttpOnly; SameSite=Lax`; upload a small catalog and confirm libraries get categorized (no 401 in logs); upload an SBOM as architect and see the redundancy report.
 8. For CI: create a deploy token (`fly tokens create deploy`) and store it as the GitHub repo secret `FLY_API_TOKEN`.
 
 ## Deploy
@@ -90,7 +90,7 @@ fly checks list                 # /healthz check results
 fly logs                        # live JSON logs (use --no-tail for a snapshot)
 fly releases                    # release history
 fly secrets list                # names and digests only, no values
-curl -fsS https://shelfmark.fly.dev/healthz
+curl -fsS https://shelfmark-tsw.fly.dev/healthz
 ```
 
 - Every log line carries `version`; confirm it matches the deployed sha.

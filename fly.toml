@@ -3,7 +3,7 @@
 # set with `fly secrets set` (see docs/runbook.md). VERSION is passed at deploy
 # time with `--build-arg VERSION=<git sha>`.
 
-app = "shelfmark"
+app = "shelfmark-tsw"
 primary_region = "fra"
 
 # The app drains HTTP + the catalog queue on SIGTERM within a 25 s budget

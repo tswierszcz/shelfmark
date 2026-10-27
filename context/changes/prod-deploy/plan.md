@@ -426,7 +426,7 @@ A single `shared-cpu-1x` 512 MB Machine is enough for M1 traffic. The queue's 5 
 
 #### Automated
 
-- [ ] 4.1 fly config validate passes
+- [x] 4.1 fly config validate passes
 - [ ] 4.2 fly status shows 1 started Machine in fra with passing check
 - [ ] 4.3 Production /healthz returns ok
 - [ ] 4.4 HTTP redirects to HTTPS
