@@ -1,3 +1,5 @@
+@AGENTS.md
+
 <!-- BEGIN @przeprogramowani/10x-cli -->
 
 ## Zestaw narzędzi AI 10xDevs - Moduł 2, Lekcja 2
