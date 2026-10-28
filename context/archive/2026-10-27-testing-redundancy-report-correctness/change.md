@@ -1,10 +1,10 @@
 ---
 change_id: testing-redundancy-report-correctness
 title: Test rollout Phase 3 — redundancy report correctness
-status: new
+status: archived
 created: 2026-10-27
-updated: 2026-10-27
-archived_at: null
+updated: 2026-10-28
+archived_at: 2026-10-28T08:11:51Z
 ---
 
 ## Notes
