@@ -249,27 +249,27 @@ Brak migracji i zmian w schemacie. Każda faza to osobny commit i da się ją wy
 
 #### Automated
 
-- [x] 1.1 Testy z wieloma projektami i test charakteryzujący przechodzą
-- [x] 1.2 Cały pakiet i vet przechodzą
-- [x] 1.3 Brak zmian w kodzie produkcyjnym
+- [x] 1.1 Testy z wieloma projektami i test charakteryzujący przechodzą — 86dccdd
+- [x] 1.2 Cały pakiet i vet przechodzą — 86dccdd
+- [x] 1.3 Brak zmian w kodzie produkcyjnym — 86dccdd
 
 #### Manual
 
-- [x] 1.4 Dowód, że testy coś chronią (zepsucie reguły → czerwony test)
-- [x] 1.5 Przegląd scenariuszy testu względem ryzyka #4
-- [ ] 1.6 Wchłonięta zmiana zarchiwizowana
+- [x] 1.4 Dowód, że testy coś chronią (zepsucie reguły → czerwony test) — 86dccdd
+- [x] 1.5 Przegląd scenariuszy testu względem ryzyka #4 — 86dccdd
+- [x] 1.6 Wchłonięta zmiana zarchiwizowana — 85cf137
 
 ### Phase 2: Wydzielenie strategic.go
 
 #### Automated
 
-- [ ] 2.1 Ten sam zbiór testów przed i po fazie
-- [ ] 2.2 Cały pakiet i vet przechodzą
-- [ ] 2.3 store.go nie zawiera metod znaczników
+- [x] 2.1 Ten sam zbiór testów przed i po fazie
+- [x] 2.2 Cały pakiet i vet przechodzą
+- [x] 2.3 store.go nie zawiera metod znaczników
 
 #### Manual
 
-- [ ] 2.4 Przegląd diffu: tylko przeniesione bloki
+- [x] 2.4 Przegląd diffu: tylko przeniesione bloki
 
 ### Phase 3: Jeden właściciel reguł znaczników
 
