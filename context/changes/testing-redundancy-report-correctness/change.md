@@ -14,3 +14,5 @@ Risks covered: #4 (the redundancy report's cross-project / per-ecosystem aggrega
 Risk response intent: #4 — for a project with N direct dependencies in the same category, the report flags exactly the non-strategic ones as "candidate to retire", regardless of upload order across projects; challenge "one project is enough aggregation coverage"; avoid testing only one project/one category.
 
 **Paused 2026-10-27:** waiting for the M4 (10xArchitect) L3 research on the redundancy report flow. Reuse its findings as the grounding for this phase instead of a separate `/10x-research`.
+
+**Absorbed by refactor-opportunities Phase 1 (2026-10-28):** the Phase 3 rollout tests (risk #4) landed as `backend/internal/catalog/project_report_test.go` in `context/changes/refactor-opportunities/`. Status left unchanged; archiving this folder is a Manual step.

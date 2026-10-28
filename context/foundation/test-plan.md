@@ -74,7 +74,7 @@ orchestrator updates Status as artifacts appear on disk.
 |---|---|---|---|---|---|---|
 | 1 | Critical-path pipeline & input hardening | Prove the SBOM/LLM pipeline doesn't silently drop data and malformed input can't crash it | #1, #7 | unit + integration | complete | `context/archive/2026-10-21-testing-pipeline-input-hardening/` |
 | 2 | Access control & data-integrity regressions | Lock role gating and the strategic-marks cap against regression | #2, #3, #6 | unit + integration | complete | `context/archive/2026-10-26-testing-access-control-data-integrity/` |
-| 3 | Redundancy report correctness | Prove cross-project aggregation yields the right retire/strategic call | #4 | integration | change opened | `context/changes/testing-redundancy-report-correctness/` |
+| 3 | Redundancy report correctness | Prove cross-project aggregation yields the right retire/strategic call | #4 | integration | complete | `context/changes/refactor-opportunities/` |
 | 4 | Frontend functional test harness | Stand up a frontend test runner and cover error/empty/role-mismatch rendering on the highest-churn routes | #5 | unit/component (new setup) | not started | — |
 
 **Status vocabulary** (fixed — parser literals): `not started` → `change opened` → `researched` → `planned` → `implementing` → `complete`.
@@ -130,7 +130,11 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 ### 6.3 Adding a multi-fixture integration test (cross-project)
 
-- TBD — see §3 Phase 3 (redundancy report aggregation pattern).
+- Fixture: two projects uploaded through `doProjectUpload` with CycloneDX SBOMs whose dependency graphs make at least one library direct in one project and transitive in the other; resolve shared libraries with `LibrariesByPurls`, not by batch (see `setUpMultiProjectReportFixture` in `backend/internal/catalog/project_report_test.go`).
+- State: categories through `AttachCategory(..., "manual")`, strategic marks through `MarkStrategic` / `UnmarkStrategic` (never raw SQL), so the cap and the report read the same rows production writes.
+- Run the whole scenario in both upload orders (A→B, B→A) on one container, with `resetCatalogTables` between them, and compare the two reports keyed by purl (`is_direct`, per-category `strategic`/`retire_candidate`) — never as raw JSON, since `id` and `upload_batch_id` differ between runs.
+- Assert the exact set of `purl | category` retire candidates per project, not a count, so a wrong library being flagged fails the test; cover a category reviewed only through a library outside the project and a category with no marks.
+- Pin open product questions as `..._Characterization` tests with a comment pointing at the decision (e.g. K1 / FR-007 ecosystem scope), so changing the behavior is an explicit test edit.
 
 ### 6.4 Adding a frontend component/unit test
 
