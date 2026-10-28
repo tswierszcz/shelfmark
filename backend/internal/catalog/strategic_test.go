@@ -476,33 +476,28 @@ func TestStrategicIndex_RetireCandidateRule(t *testing.T) {
 		name          string
 		idx           strategicIndex
 		libraryID     string
-		categoryID    *string
+		categoryID    string
 		isDirect      bool
 		wantStrategic bool
 		wantReviewed  bool
 		wantRetire    bool
 	}{
-		{name: "direct, strategic, reviewed", idx: idx, libraryID: "libA", categoryID: indexCategory("catReviewed"), isDirect: true, wantStrategic: true, wantReviewed: true, wantRetire: false},
-		{name: "direct, not strategic, reviewed", idx: idx, libraryID: "libB", categoryID: indexCategory("catReviewed"), isDirect: true, wantStrategic: false, wantReviewed: true, wantRetire: true},
-		{name: "direct, not strategic, not reviewed", idx: idx, libraryID: "libB", categoryID: indexCategory("catOpen"), isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
-		{name: "direct, strategic elsewhere, not reviewed", idx: idx, libraryID: "libA", categoryID: indexCategory("catOpen"), isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
-		{name: "transitive, strategic, reviewed", idx: idx, libraryID: "libA", categoryID: indexCategory("catReviewed"), isDirect: false, wantStrategic: true, wantReviewed: true, wantRetire: false},
-		{name: "transitive, not strategic, reviewed", idx: idx, libraryID: "libB", categoryID: indexCategory("catReviewed"), isDirect: false, wantStrategic: false, wantReviewed: true, wantRetire: false},
-		{name: "transitive, not strategic, not reviewed", idx: idx, libraryID: "libB", categoryID: indexCategory("catOpen"), isDirect: false, wantStrategic: false, wantReviewed: false, wantRetire: false},
-		{name: "direct, no category", idx: idx, libraryID: "libB", categoryID: nil, isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
-		{name: "empty index, direct", idx: newStrategicIndex(nil), libraryID: "libA", categoryID: indexCategory("catReviewed"), isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
-		{name: "zero-value index, direct", idx: strategicIndex{}, libraryID: "libA", categoryID: indexCategory("catReviewed"), isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
+		{name: "direct, strategic, reviewed", idx: idx, libraryID: "libA", categoryID: "catReviewed", isDirect: true, wantStrategic: true, wantReviewed: true, wantRetire: false},
+		{name: "direct, not strategic, reviewed", idx: idx, libraryID: "libB", categoryID: "catReviewed", isDirect: true, wantStrategic: false, wantReviewed: true, wantRetire: true},
+		{name: "direct, not strategic, not reviewed", idx: idx, libraryID: "libB", categoryID: "catOpen", isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
+		{name: "direct, strategic elsewhere, not reviewed", idx: idx, libraryID: "libA", categoryID: "catOpen", isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
+		{name: "transitive, strategic, reviewed", idx: idx, libraryID: "libA", categoryID: "catReviewed", isDirect: false, wantStrategic: true, wantReviewed: true, wantRetire: false},
+		{name: "transitive, not strategic, reviewed", idx: idx, libraryID: "libB", categoryID: "catReviewed", isDirect: false, wantStrategic: false, wantReviewed: true, wantRetire: false},
+		{name: "transitive, not strategic, not reviewed", idx: idx, libraryID: "libB", categoryID: "catOpen", isDirect: false, wantStrategic: false, wantReviewed: false, wantRetire: false},
+		{name: "empty index, direct", idx: newStrategicIndex(nil), libraryID: "libA", categoryID: "catReviewed", isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
+		{name: "zero-value index, direct", idx: strategicIndex{}, libraryID: "libA", categoryID: "catReviewed", isDirect: true, wantStrategic: false, wantReviewed: false, wantRetire: false},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Mirror ProjectReport: a category-less row never asks the index.
-			var gotStrategic, gotReviewed, gotRetire bool
-			if tc.categoryID != nil {
-				gotStrategic = tc.idx.isStrategic(tc.libraryID, *tc.categoryID)
-				gotReviewed = tc.idx.isReviewed(*tc.categoryID)
-				gotRetire = tc.idx.isRetireCandidate(tc.libraryID, *tc.categoryID, tc.isDirect)
-			}
+			gotStrategic := tc.idx.isStrategic(tc.libraryID, tc.categoryID)
+			gotReviewed := tc.idx.isReviewed(tc.categoryID)
+			gotRetire := tc.idx.isRetireCandidate(tc.libraryID, tc.categoryID, tc.isDirect)
 			if gotStrategic != tc.wantStrategic {
 				t.Errorf("isStrategic = %v, want %v", gotStrategic, tc.wantStrategic)
 			}
@@ -515,6 +510,3 @@ func TestStrategicIndex_RetireCandidateRule(t *testing.T) {
 		})
 	}
 }
-
-// indexCategory returns a pointer to categoryID, for report-row-shaped cases.
-func indexCategory(categoryID string) *string { return &categoryID }

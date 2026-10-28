@@ -6,18 +6,12 @@ package catalog
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-// ErrInvalidReference indicates MarkStrategic was called with a libraryID or
-// categoryID that doesn't exist, surfaced by strategic_marks' foreign key
-// constraints.
-var ErrInvalidReference = errors.New("catalog: library or category does not exist")
 
 // Category is one entry in the curated taxonomy seeded by migration
 // 0002_catalog_schema.
@@ -159,7 +153,7 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 		conditions = append(conditions, fmt.Sprintf("l.upload_batch_id = $%d", len(args)))
 	}
 	if filter.Strategic != nil {
-		existsSubquery := activeStrategicMarkExists("l")
+		existsSubquery := activeStrategicMarkExists
 		if *filter.Strategic {
 			conditions = append(conditions, existsSubquery)
 		} else {

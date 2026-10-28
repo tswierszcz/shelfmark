@@ -10,6 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// ErrInvalidReference indicates MarkStrategic was called with a libraryID or
+// categoryID that doesn't exist, surfaced by strategic_marks' foreign key
+// constraints.
+var ErrInvalidReference = errors.New("catalog: library or category does not exist")
+
 // ErrStrategicMarkNotFound indicates the (library, category) pair targeted
 // by UnmarkStrategic has no active strategic mark to deactivate.
 var ErrStrategicMarkNotFound = errors.New("catalog: no active strategic mark found")
@@ -265,9 +270,6 @@ func (s *Store) loadStrategicIndex(ctx context.Context) (strategicIndex, error) 
 	return newStrategicIndex(pairs), nil
 }
 
-// activeStrategicMarkExists returns a SQL predicate that is true when the
-// library row aliased as alias has at least one active strategic mark.
-// alias must be a constant from code, never user input.
-func activeStrategicMarkExists(alias string) string {
-	return `EXISTS (SELECT 1 FROM strategic_marks sm WHERE sm.library_id = ` + alias + `.id AND sm.active)`
-}
+// activeStrategicMarkExists is a SQL predicate that is true when the
+// libraries row aliased as l has at least one active strategic mark.
+const activeStrategicMarkExists = `EXISTS (SELECT 1 FROM strategic_marks sm WHERE sm.library_id = l.id AND sm.active)`
