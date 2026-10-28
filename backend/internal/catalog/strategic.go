@@ -185,3 +185,89 @@ func (s *Store) StrategicMarksByLibrary(ctx context.Context, libraryIDs []string
 
 	return result, nil
 }
+
+// strategicPair is one active strategic mark: libraryID is the strategic pick
+// in categoryID.
+type strategicPair struct {
+	libraryID  string
+	categoryID string
+}
+
+// strategicIndex answers the strategic-mark questions the redundancy report
+// asks, from a snapshot of active marks. It is the single owner of the
+// "strategic", "reviewed" and "retire candidate" rules (decision K1 changes
+// only this type). The zero value is an empty index that answers false to
+// every question.
+type strategicIndex struct {
+	strategic map[strategicPair]bool
+	reviewed  map[string]bool
+}
+
+// newStrategicIndex builds an index from active (library, category) pairs.
+func newStrategicIndex(pairs []strategicPair) strategicIndex {
+	idx := strategicIndex{
+		strategic: make(map[strategicPair]bool, len(pairs)),
+		reviewed:  map[string]bool{},
+	}
+	for _, p := range pairs {
+		idx.strategic[p] = true
+		idx.reviewed[p.categoryID] = true
+	}
+	return idx
+}
+
+// isStrategic reports whether libraryID holds an active strategic mark in
+// categoryID.
+func (idx strategicIndex) isStrategic(libraryID, categoryID string) bool {
+	return idx.strategic[strategicPair{libraryID: libraryID, categoryID: categoryID}]
+}
+
+// isReviewed reports whether categoryID has been reviewed, which today means
+// at least one library, in any ecosystem, holds an active strategic mark in
+// it. Whether review should be scoped per ecosystem is open decision K1.
+func (idx strategicIndex) isReviewed(categoryID string) bool {
+	return idx.reviewed[categoryID]
+}
+
+// isRetireCandidate reports whether a library should be flagged for
+// retirement in categoryID: it is a direct dependency, the category has been
+// reviewed, and this library is not itself the strategic pick there. It
+// separates "no library has been reviewed for this category yet" (never a
+// candidate) from "this library lost out to another library's strategic
+// pick" (a candidate).
+func (idx strategicIndex) isRetireCandidate(libraryID, categoryID string, isDirect bool) bool {
+	return isDirect && idx.isReviewed(categoryID) && !idx.isStrategic(libraryID, categoryID)
+}
+
+// loadStrategicIndex loads every active strategic mark into a strategicIndex
+// with one query.
+func (s *Store) loadStrategicIndex(ctx context.Context) (strategicIndex, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT library_id, category_id FROM strategic_marks WHERE active`,
+	)
+	if err != nil {
+		return strategicIndex{}, fmt.Errorf("catalog: failed to load strategic index: %w", err)
+	}
+	defer rows.Close()
+
+	pairs := []strategicPair{}
+	for rows.Next() {
+		var p strategicPair
+		if err := rows.Scan(&p.libraryID, &p.categoryID); err != nil {
+			return strategicIndex{}, fmt.Errorf("catalog: failed to scan strategic index pair: %w", err)
+		}
+		pairs = append(pairs, p)
+	}
+	if err := rows.Err(); err != nil {
+		return strategicIndex{}, fmt.Errorf("catalog: failed to load strategic index: %w", err)
+	}
+
+	return newStrategicIndex(pairs), nil
+}
+
+// activeStrategicMarkExists returns a SQL predicate that is true when the
+// library row aliased as alias has at least one active strategic mark.
+// alias must be a constant from code, never user input.
+func activeStrategicMarkExists(alias string) string {
+	return `EXISTS (SELECT 1 FROM strategic_marks sm WHERE sm.library_id = ` + alias + `.id AND sm.active)`
+}

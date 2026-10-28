@@ -263,24 +263,24 @@ Brak migracji i zmian w schemacie. Każda faza to osobny commit i da się ją wy
 
 #### Automated
 
-- [x] 2.1 Ten sam zbiór testów przed i po fazie
-- [x] 2.2 Cały pakiet i vet przechodzą
-- [x] 2.3 store.go nie zawiera metod znaczników
+- [x] 2.1 Ten sam zbiór testów przed i po fazie — 13225cf
+- [x] 2.2 Cały pakiet i vet przechodzą — 13225cf
+- [x] 2.3 store.go nie zawiera metod znaczników — 13225cf
 
 #### Manual
 
-- [x] 2.4 Przegląd diffu: tylko przeniesione bloki
+- [x] 2.4 Przegląd diffu: tylko przeniesione bloki — 13225cf
 
 ### Phase 3: Jeden właściciel reguł znaczników
 
 #### Automated
 
-- [ ] 3.1 Testy z fazy 1 przechodzą bez zmian w ich plikach
-- [ ] 3.2 Test jednostkowy indeksu przechodzi
-- [ ] 3.3 Cały pakiet i vet przechodzą
-- [ ] 3.4 strategic_marks w literałach SQL tylko w strategic.go
-- [ ] 3.5 reviewedCategories nie istnieje
+- [x] 3.1 Testy z fazy 1 przechodzą bez zmian w ich plikach
+- [x] 3.2 Test jednostkowy indeksu przechodzi
+- [x] 3.3 Cały pakiet i vet przechodzą
+- [x] 3.4 strategic_marks w literałach SQL tylko w strategic.go
+- [x] 3.5 reviewedCategories nie istnieje
 
 #### Manual
 
-- [ ] 3.6 Raport w działającej aplikacji wygląda tak samo jak przed zmianą
+- [x] 3.6 Raport w działającej aplikacji wygląda tak samo jak przed zmianą

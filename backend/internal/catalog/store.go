@@ -159,7 +159,7 @@ func (s *Store) ListLibraries(ctx context.Context, filter LibraryFilter) ([]Libr
 		conditions = append(conditions, fmt.Sprintf("l.upload_batch_id = $%d", len(args)))
 	}
 	if filter.Strategic != nil {
-		existsSubquery := `EXISTS (SELECT 1 FROM strategic_marks sm WHERE sm.library_id = l.id AND sm.active)`
+		existsSubquery := activeStrategicMarkExists("l")
 		if *filter.Strategic {
 			conditions = append(conditions, existsSubquery)
 		} else {
