@@ -244,3 +244,19 @@ func ListProjectsHandler(store *Store) http.HandlerFunc {
 		}
 	}
 }
+
+// DeleteProjectHandler returns a handler for DELETE /api/projects/{projectID}.
+func DeleteProjectHandler(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		projectID := r.PathValue("projectID")
+		if err := store.DeleteProject(r.Context(), projectID); err != nil {
+			if errors.Is(err, ErrProjectNotFound) {
+				writeCatalogError(w, r, http.StatusNotFound, "project not found", nil)
+				return
+			}
+			writeCatalogError(w, r, http.StatusInternalServerError, "failed to delete project", err, "project_id", projectID)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

@@ -57,6 +57,7 @@ func routes(d deps) []route {
 		{"DELETE", "/api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", architect, catalog.UnmarkStrategicHandler(d.Catalog)},
 		{"POST", "/api/projects/upload", architect, catalog.ProjectUploadHandler(d.Catalog, d.Queue)},
 		{"GET", "/api/projects", architectViewer, catalog.ListProjectsHandler(d.Catalog)},
+		{"DELETE", "/api/projects/{projectID}", architect, catalog.DeleteProjectHandler(d.Catalog)},
 		{"GET", "/api/projects/{projectID}/report", architectViewer, catalog.ProjectReportHandler(d.Catalog)},
 		{"GET", "/", nil, spaHandler(d.StaticDir)},
 	}
