@@ -249,9 +249,9 @@ Brak migracji. Rollback obrazu jest bezpieczny, bo schemat się nie zmienia; usu
 
 #### Automated
 
-- [x] 2.1 Typecheck i build przechodzą
-- [x] 2.2 Nowy E2E przechodzi
-- [x] 2.3 Cały zestaw E2E przechodzi
+- [x] 2.1 Typecheck i build przechodzą — 78c9822
+- [x] 2.2 Nowy E2E przechodzi — 78c9822
+- [x] 2.3 Cały zestaw E2E przechodzi — 78c9822
 
 #### Manual
 
