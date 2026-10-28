@@ -243,7 +243,7 @@ Brak migracji. Rollback obrazu jest bezpieczny, bo schemat się nie zmienia; usu
 
 #### Manual
 
-- [ ] 1.4 curl DELETE na jednorazowej instancji: 204 / 403 / 404
+- [x] 1.4 curl DELETE na jednorazowej instancji: 204 / 403 / 404 — ręcznie sprawdzone przez użytkownika
 
 ### Phase 2: Frontend i E2E
 
@@ -255,6 +255,6 @@ Brak migracji. Rollback obrazu jest bezpieczny, bo schemat się nie zmienia; usu
 
 #### Manual
 
-- [ ] 2.4 Delete / Cancel / Confirm na /redundancy jako architekt
-- [ ] 2.5 Viewer nie widzi przycisku
-- [ ] 2.6 Kitchen-sink pokazuje wariant destructive
+- [x] 2.4 Delete / Cancel / Confirm na /redundancy jako architekt — ręcznie sprawdzone przez użytkownika
+- [x] 2.5 Viewer nie widzi przycisku — ręcznie sprawdzone przez użytkownika
+- [x] 2.6 Kitchen-sink pokazuje wariant destructive — ręcznie sprawdzone przez użytkownika

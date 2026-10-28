@@ -306,6 +306,7 @@ function RedundancyContent() {
           <select
             id="project-picker"
             value={selectedProjectId}
+            disabled={deleting}
             onChange={(event) => handleSelectProject(event.target.value)}
             className="border border-rule bg-bg-soft text-ink text-sm rounded px-3 py-2"
           >
@@ -335,7 +336,15 @@ function RedundancyContent() {
                   : "Delete project"}
             </Button>
             {confirmDelete && (
-              <Button type="button" variant="secondary" onClick={() => setConfirmDelete(false)}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDelete(false);
+                  setDeleteError(null);
+                }}
+              >
                 Cancel
               </Button>
             )}

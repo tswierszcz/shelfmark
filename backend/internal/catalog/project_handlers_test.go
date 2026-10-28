@@ -624,6 +624,23 @@ func TestDeleteProject_RemovesMembershipAndPreservesCatalogAndOtherProject(t *te
 	if !reflect.DeepEqual(beforeB, afterB) {
 		t.Fatalf("other project's report changed: before=%+v after=%+v", beforeB, afterB)
 	}
+	organizationLibraries, err := store.ListLibraries(ctx, LibraryFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deletedOnlyLibrary *Library
+	for i := range organizationLibraries {
+		if organizationLibraries[i].Purl == "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0" {
+			deletedOnlyLibrary = &organizationLibraries[i]
+			break
+		}
+	}
+	if deletedOnlyLibrary == nil {
+		t.Fatal("library used only by deleted project was removed from the catalog")
+	}
+	if deletedOnlyLibrary.IsDirect {
+		t.Fatal("library used only by deleted project is still direct in the organization view")
+	}
 	remaining, err := store.LibrariesByPurls(ctx, []string{"pkg:maven/com.google.guava/guava@32.0.0"})
 	if err != nil || len(remaining) != 1 {
 		t.Fatalf("library was removed: err=%v libraries=%+v", err, remaining)
