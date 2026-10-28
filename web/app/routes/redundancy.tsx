@@ -4,6 +4,7 @@ import type { BatchProgress } from "../lib/catalog";
 import {
   getBatchProgress,
   getProjectReport,
+  deleteProject,
   listProjects,
   uploadProjectSbom,
   type Project,
@@ -83,6 +84,9 @@ function RedundancyContent() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [report, setReport] = useState<ProjectReportLibrary[]>([]);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollToken = useRef(0);
@@ -195,7 +199,32 @@ function RedundancyContent() {
 
   function handleSelectProject(projectId: string) {
     setSelectedProjectId(projectId);
+    setConfirmDelete(false);
+    setDeleteError(null);
     refreshReport(projectId);
+  }
+
+  async function handleDeleteProject() {
+    if (!selectedProjectId) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setDeleteError(null);
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteProject(selectedProjectId);
+      setProjects((current) => current.filter((project) => project.id !== selectedProjectId));
+      setSelectedProjectId("");
+      setReport([]);
+      setReportError(null);
+      setConfirmDelete(false);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete project.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -291,6 +320,28 @@ function RedundancyContent() {
 
         {projectsError && <p className="mt-2 text-destructive text-sm">{projectsError}</p>}
         {reportError && <p className="mt-2 text-destructive text-sm">{reportError}</p>}
+        {isArchitect && selectedProjectId && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={confirmDelete ? "destructive" : "secondary"}
+              disabled={deleting}
+              onClick={handleDeleteProject}
+            >
+              {deleting
+                ? "Deleting…"
+                : confirmDelete
+                  ? `Confirm delete ${projects.find((project) => project.id === selectedProjectId)?.name ?? "project"}`
+                  : "Delete project"}
+            </Button>
+            {confirmDelete && (
+              <Button type="button" variant="secondary" onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        )}
+        {deleteError && <p className="mt-2 text-destructive text-sm">{deleteError}</p>}
 
         {selectedProjectId && (
           <div className="mt-4 overflow-x-auto">

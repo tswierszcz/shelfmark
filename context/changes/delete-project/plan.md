@@ -237,9 +237,9 @@ Brak migracji. Rollback obrazu jest bezpieczny, bo schemat się nie zmienia; usu
 
 #### Automated
 
-- [x] 1.1 Testy usuwania przechodzą
-- [x] 1.2 Blokada ról przechodzi z nową trasą
-- [x] 1.3 Cały backend i vet przechodzą
+- [x] 1.1 Testy usuwania przechodzą — cc6d8d3
+- [x] 1.2 Blokada ról przechodzi z nową trasą — cc6d8d3
+- [x] 1.3 Cały backend i vet przechodzą — cc6d8d3
 
 #### Manual
 
@@ -249,9 +249,9 @@ Brak migracji. Rollback obrazu jest bezpieczny, bo schemat się nie zmienia; usu
 
 #### Automated
 
-- [ ] 2.1 Typecheck i build przechodzą
-- [ ] 2.2 Nowy E2E przechodzi
-- [ ] 2.3 Cały zestaw E2E przechodzi
+- [x] 2.1 Typecheck i build przechodzą
+- [x] 2.2 Nowy E2E przechodzi
+- [x] 2.3 Cały zestaw E2E przechodzi
 
 #### Manual
 
