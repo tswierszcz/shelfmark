@@ -187,25 +187,22 @@ func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
 
 // ProjectReport computes projectID's redundancy report: one row per
 // (library, category) pair of every library recorded against the project,
-// plus one category-less row for each library with no categories, with
-// RetireCandidate set for a direct library that is not itself the
-// strategic pick in a category some library (not necessarily this one) has
-// already been reviewed for.
+// plus one category-less row for each library with no categories. Strategic
+// and RetireCandidate come from strategicIndex (see isStrategic and
+// isRetireCandidate); a category-less row is never either.
 func (s *Store) ProjectReport(ctx context.Context, projectID string) ([]ProjectReportRow, error) {
-	reviewedCategories, err := s.reviewedCategories(ctx)
+	marks, err := s.loadStrategicIndex(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	rows, err := s.pool.Query(ctx,
 		`SELECT pl.library_id, l.purl, l.name, l.ecosystem, l.github_repo, l.status, pl.is_direct,
-		        c.id, c.name, (sm.library_id IS NOT NULL) AS strategic
+		        c.id, c.name
 		 FROM project_libraries pl
 		 JOIN libraries l ON l.id = pl.library_id
 		 LEFT JOIN library_categories lc ON lc.library_id = l.id
 		 LEFT JOIN categories c ON c.id = lc.category_id
-		 LEFT JOIN strategic_marks sm
-		        ON sm.library_id = l.id AND sm.category_id = c.id AND sm.active
 		 WHERE pl.project_id = $1
 		 ORDER BY l.purl, c.name`,
 		projectID,
@@ -220,11 +217,14 @@ func (s *Store) ProjectReport(ctx context.Context, projectID string) ([]ProjectR
 		var row ProjectReportRow
 		if err := rows.Scan(
 			&row.LibraryID, &row.Purl, &row.Name, &row.Ecosystem, &row.GithubRepo, &row.Status, &row.IsDirect,
-			&row.CategoryID, &row.CategoryName, &row.Strategic,
+			&row.CategoryID, &row.CategoryName,
 		); err != nil {
 			return nil, fmt.Errorf("catalog: failed to scan project report row: %w", err)
 		}
-		row.RetireCandidate = row.CategoryID != nil && row.IsDirect && reviewedCategories[*row.CategoryID] && !row.Strategic
+		if row.CategoryID != nil {
+			row.Strategic = marks.isStrategic(row.LibraryID, *row.CategoryID)
+			row.RetireCandidate = marks.isRetireCandidate(row.LibraryID, *row.CategoryID, row.IsDirect)
+		}
 		report = append(report, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -232,33 +232,4 @@ func (s *Store) ProjectReport(ctx context.Context, projectID string) ([]ProjectR
 	}
 
 	return report, nil
-}
-
-// reviewedCategories returns, keyed by category ID, whether any library at
-// all currently holds an active strategic mark on that category. ProjectReport
-// needs this to tell "no library has been reviewed for this category yet"
-// (never a retire candidate) apart from "this library lost out to another
-// library's strategic pick" (a retire candidate).
-func (s *Store) reviewedCategories(ctx context.Context) (map[string]bool, error) {
-	rows, err := s.pool.Query(ctx,
-		`SELECT DISTINCT category_id FROM strategic_marks WHERE active`,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("catalog: failed to list reviewed categories: %w", err)
-	}
-	defer rows.Close()
-
-	reviewed := map[string]bool{}
-	for rows.Next() {
-		var categoryID string
-		if err := rows.Scan(&categoryID); err != nil {
-			return nil, fmt.Errorf("catalog: failed to scan reviewed category: %w", err)
-		}
-		reviewed[categoryID] = true
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("catalog: failed to list reviewed categories: %w", err)
-	}
-
-	return reviewed, nil
 }
