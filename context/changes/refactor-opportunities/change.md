@@ -1,7 +1,7 @@
 ---
 change_id: refactor-opportunities
 title: Rank refactor opportunities from the redundancy flow analysis
-status: implementing
+status: implemented
 created: 2026-10-27
 updated: 2026-10-28
 archived_at: null

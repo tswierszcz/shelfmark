@@ -275,12 +275,12 @@ Brak migracji i zmian w schemacie. Każda faza to osobny commit i da się ją wy
 
 #### Automated
 
-- [x] 3.1 Testy z fazy 1 przechodzą bez zmian w ich plikach
-- [x] 3.2 Test jednostkowy indeksu przechodzi
-- [x] 3.3 Cały pakiet i vet przechodzą
-- [x] 3.4 strategic_marks w literałach SQL tylko w strategic.go
-- [x] 3.5 reviewedCategories nie istnieje
+- [x] 3.1 Testy z fazy 1 przechodzą bez zmian w ich plikach — 9495cbe
+- [x] 3.2 Test jednostkowy indeksu przechodzi — 9495cbe
+- [x] 3.3 Cały pakiet i vet przechodzą — 9495cbe
+- [x] 3.4 strategic_marks w literałach SQL tylko w strategic.go — 9495cbe
+- [x] 3.5 reviewedCategories nie istnieje — 9495cbe
 
 #### Manual
 
-- [x] 3.6 Raport w działającej aplikacji wygląda tak samo jak przed zmianą
+- [x] 3.6 Raport w działającej aplikacji wygląda tak samo jak przed zmianą — 9495cbe
