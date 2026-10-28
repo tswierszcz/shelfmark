@@ -84,4 +84,14 @@ export async function getProjectReport(
   return (await res.json()) as ProjectReportLibrary[];
 }
 
+export async function deleteProject(projectId: string): Promise<void> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    throw new Error(await errorMessage(res, "Failed to delete project"));
+  }
+}
+
 export { getBatchProgress };

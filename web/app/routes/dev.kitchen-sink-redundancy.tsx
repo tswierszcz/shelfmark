@@ -95,6 +95,10 @@ export default function KitchenSinkRedundancy() {
         </Button>
       </Section>
 
+      <Section title="4a. Destructive" caption="Destructive action button using the destructive theme token.">
+        <Button type="button" variant="destructive">Confirm delete project</Button>
+      </Section>
+
       <Section title="5. Error" caption="The shared error-text pattern used across the view.">
         <p className="text-destructive text-sm">Upload failed: unsupported file type.</p>
       </Section>
