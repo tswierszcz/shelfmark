@@ -9,6 +9,8 @@ tags: [research, refactor-opportunities, catalog-store, http-contract, strategic
 status: complete
 last_updated: 2026-10-27
 last_updated_by: Claude Opus 5.5 (Claude Code)
+last_updated_note: "Weryfikacja twierdzeń strukturalnych rankingu ast-grep 0.51.0 na c2340d0 (kod bez zmian od 8bcf698); korekty w miejscu w formacie 'X (raport: Y)'; ranking bez zmian"
+verification_commit: c2340d0
 ---
 
 # Research: refactor opportunities
@@ -69,9 +71,9 @@ Metoda: trzech subagentów w trybie eksploracji (obecny kształt; historia i int
 
 **Obecny kształt.**
 - [D] Jeden typ `Store{pool}` (`store.go:94-101`) z 18 metodami: 11 w `store.go`, 7 w `project.go`. Bez interfejsu (V8).
-- [D] 14 funkcji produkcyjnych przyjmuje `*Store` wprost (handlery w `handlers.go` i `project_handlers.go`, `NewQueue` `queue.go:71`, `ProcessLibrary` `pipeline.go:35`).
-- [D] Trzy ścieżki odczytu znaczników strategicznych: `StrategicMarksByLibrary` (`store.go:494`), filtr `Strategic` w `ListLibraries` (`store.go:187`) i SQL raportu (`project.go:201, 244`).
-- [D] Dwa równoległe sposoby „rozwiązania bibliotek po insercie”: `ListLibraries(BatchID)` (`handlers.go:131`) i `LibrariesByPurls` (`project.go:73`, powód w komentarzu `project.go:68-72`).
+- [D] 13 funkcji produkcyjnych przyjmuje `*Store` wprost: 11 handlerów w `handlers.go` i `project_handlers.go`, `NewQueue` `queue.go:71`, `ProcessLibrary` `pipeline.go:35` (raport: 14).
+- [D] Pięć literałów SQL czytających `strategic_marks` w pięciu metodach: `StrategicMarksByLibrary` (`store.go:494`), zapytanie limitu w `MarkStrategic` (`store.go:425`), filtr `Strategic` w `ListLibraries` (`store.go:187`) i SQL raportu (`project.go:201, 244`); poza blokiem metod znaczników (`store.go:369-521`) trzy: `store.go:187`, `project.go:201, 244` (raport: trzy ścieżki odczytu, bez zapytania limitu).
+- [D] Dwa równoległe sposoby „rozwiązania bibliotek po insercie”: `ListLibraries(BatchID)` (`handlers.go:132`; raport: `:131`) i `LibrariesByPurls` (`project.go:73`, powód w komentarzu `project.go:68-72`).
 
 **Historia i intencjonalność.** Werdykt: **świadoma konwencja; koncentracja w jednym typie narosła, nie została zaprojektowana.**
 - [D] „a `Store` struct wrapping `*pgxpool.Pool`” (`archive/2026-10-16-seed-classification-catalog/plan.md:75`); interfejsy tylko dla klientów zewnętrznych (`plan.md:39`).
@@ -89,8 +91,8 @@ Metoda: trzech subagentów w trybie eksploracji (obecny kształt; historia i int
 
 **Obecny kształt.**
 - [D] Brak osobnych DTO: kształty JSON to struktury domenowe z tagami lub anonimowe osadzanie (`projectReportLibrary{Library; IsDirect; Categories}` `project_handlers.go:147-151`, `libraryResponse` `handlers.go:176-180`).
-- [D] Raport wysyła pola nieobecne w typie TS (`upload_batch_id` jako `""`); `ProjectReportRow` ma tagi JSON, choć nigdy nie jest serializowany (`project.go:34-44`).
-- [D] Typy TS to ręczne, częściowe widoki per trasa (`catalog.ts:6-15` pomija `is_direct`, `strategic`, `error_detail`; `organization.ts:10-13` je dodaje).
+- [D] Raport wysyła pola nieobecne w typie TS (`upload_batch_id` jako `""`); `ProjectReportRow` ma tagi JSON, choć nigdy nie jest serializowany (`project.go:33-45`; raport: `:34-44`).
+- [D] Typy TS to ręczne, częściowe widoki per trasa (`catalog.ts:6-15` pomija `is_direct`, `strategic`, `error_detail`; `organization.ts:10-13` dodaje `is_direct` i `strategic`, a `error_detail` nie ma w żadnym typie TS; raport: `organization.ts` dodaje wszystkie trzy).
 - [D] Jedyna kontrola maszynowa: `json_contract_test.go` (tylko `[]` vs `null`, tylko po stronie Go).
 
 **Historia i intencjonalność.** Werdykt: **mieszany.**
@@ -100,7 +102,7 @@ Metoda: trzech subagentów w trybie eksploracji (obecny kształt; historia i int
 
 **Wykonalność.**
 - [D] Zasięg: 4 pary endpointów (tabela „Szew HTTP” w researchu L3). Dodanie tagów do `SkippedRow` zmienia klucze JSON i wymaga zmiany `catalog.ts:24-25` w tym samym commicie; testy Go czytają pola struktur, więc nie zauważą.
-- [D] Luka w osłonach: test raportu dekoduje do typu Go (`project_handlers_test.go:500-543`), więc nie wykryje rozjazdu z widokiem TS. CI: `typecheck` widzi tylko TS, `go vet` tylko Go.
+- [D] Luka w osłonach: test raportu dekoduje do typu Go (`project_handlers_test.go:489-490`, asercje `:500-543`; raport: `:500-543`), więc nie wykryje rozjazdu z widokiem TS. CI: `typecheck` widzi tylko TS, `go vet` tylko Go.
 - [I] Pierwszy krok: testy „złotego zestawu kluczy” w `json_contract_test.go` dla 4 endpointów (dekodowanie do `map[string]any`, dokładny zbiór kluczy).
 - [I] Koszt: **M** (mało kodu, ale każda zmiana w dwóch językach; odwracalne przez expand/contract).
 
@@ -133,7 +135,7 @@ Metoda: trzech subagentów w trybie eksploracji (obecny kształt; historia i int
 ### K6. Granice plików w pakiecie `catalog`
 
 **Obecny kształt.**
-- [D] `handlers.go` (439 linii): 8 handlerów czterech możliwości + pomocniki pakietowe `Enqueuer` (:19), `maxUploadBytes` (:40), `writeCatalogError` (:48-64; 27 wywołań tu, 14 w `project_handlers.go`), `newBatchID` (:429).
+- [D] `handlers.go` (439 linii): 8 handlerów czterech możliwości + pomocniki pakietowe `Enqueuer` (:19), `maxUploadBytes` (:40), `writeCatalogError` (:57, z typem odpowiedzi i komentarzem :48-64; 26 wywołań tu, 14 w `project_handlers.go`; raport: 27, liczone z definicją), `newBatchID` (:429).
 - [D] Martwy kod: `noopEnqueuer` / `NewNoopEnqueuer` (`handlers.go:23-33`) bez żadnych wywołań, także w testach.
 - [D] Powtórzony prolog multipart w obu handlerach uploadu (`handlers.go:73-102` vs `project_handlers.go:30-66`).
 
@@ -141,11 +143,11 @@ Metoda: trzech subagentów w trybie eksploracji (obecny kształt; historia i int
 - [D] „All new backend code lives in the existing `catalog` package” (`archive/2026-10-19-project-redundancy-report/plan.md:45`) i „extend (not fork)” (`archive/2026-10-17-mark-strategic-libraries/plan.md:16`).
 - [D] Wcześniejsza konwencja mówiła co innego: „one package per domain concern, each with its own small, focused files” (`archive/2026-10-16-data-layer-connectivity/plan.md:11`).
 
-**Wykonalność.** [D] Przeniesienie plików w obrębie pakietu: bez zmian symboli, `routes.go`, `main.go`, migracji ani TS. Osłony: kompilator i `handlers_test.go`, w tym testy logowania 4xx/5xx (`:711, :762`). Koszt **S**. Podział na osobne pakiety Go: **L**, bo wymaga najpierw K2 (współdzielone niewyeksportowane metody `projectExists`, `reviewedCategories`).
+**Wykonalność.** [D] Przeniesienie plików w obrębie pakietu: bez zmian symboli, `routes.go`, `main.go`, migracji ani TS. Osłony: kompilator i `handlers_test.go`, w tym testy logowania 4xx/5xx (`:711, :762`). Koszt **S**. Podział na osobne pakiety Go: **L**, bo wymaga najpierw K2 (współdzielona między plikami niewyeksportowana metoda `projectExists`, wołana z `project_handlers.go:168`; `reviewedCategories` jest wołana tylko z `project.go:195`; raport: obie współdzielone).
 
 ### K7. Upload bez wspólnej transakcji
 
-- [D] Obecny kształt: 5 niezależnych wywołań store na puli (`project_handlers.go:81, 90, 101-105, 107, 117`); transakcyjny jest tylko `ReplaceProjectLibraries` (`project.go:107-144`). Brak abstrakcji jednostki pracy.
+- [D] Obecny kształt: 5 niezależnych wywołań store na puli (`project_handlers.go:81, 90, 101-105, 107, 117`); transakcyjny jest tylko `ReplaceProjectLibraries` (`project.go:107-144`); w całym pakiecie `pool.Begin` występuje jeszcze tylko w `MarkStrategic` (`store.go:385`), poza ścieżką uploadu. Brak abstrakcji jednostki pracy.
 - [D] Historia: **świadome i udokumentowane.** „needs no spanning transaction … deliberately last” (`archive/2026-10-19-project-redundancy-report/plan.md:164`), po plan-review F4 „Safe as designed”.
 - [I] Skutek błędu w połowie to zmarnowana praca (biblioteki skategoryzowane bez projektu), nie uszkodzenie danych. Przesłanka nadal w dużej mierze aktualna.
 - [I] Wykonalność: nowy szew transakcyjny na 5 metodach i przesunięcie kolejkowania za commit. Koszt **M**.
@@ -162,7 +164,7 @@ Ocena: koszt długu (ryzyko, dowody z mapy i researchu) wobec kosztu zmiany (zas
 
 ### 1. Jeden właściciel znaczników strategicznych (z K2, przygotowuje grunt pod K1)
 
-- **Obecny → docelowy kształt:** trzy ścieżki odczytu `strategic_marks` (`store.go:187`, `store.go:494`, `project.go:201, 244`) i reguła „kategoria przejrzana” ukryta w prywatnej metodzie raportu → jedna nazwana część `Store` (plik `strategic.go` w tym samym pakiecie), która jest jedynym miejscem czytającym i zapisującym tę tabelę, w tym regułę „przejrzana” i zakres limitu.
+- **Obecny → docelowy kształt:** pięć literałów odczytu `strategic_marks` w pięciu metodach, z czego trzy poza metodami znaczników (`store.go:187`, `project.go:201, 244`; raport: trzy ścieżki odczytu `store.go:187`, `store.go:494`, `project.go:201, 244`) i reguła „kategoria przejrzana” ukryta w prywatnej metodzie raportu → jedna nazwana część `Store` (plik `strategic.go` w tym samym pakiecie), która jest jedynym miejscem czytającym i zapisującym tę tabelę, w tym regułę „przejrzana” i zakres limitu.
 - **Dlaczego #1:**
   - Dług jest w strefie ryzyka 2 mapy.
   - Tu siedzi jedyny twardy niezmiennik domeny, naprawiany już dwa razy.
@@ -212,6 +214,33 @@ Ocena: koszt długu (ryzyko, dowody z mapy i researchu) wobec kosztu zmiany (zas
 | K6 podział na osobne pakiety Go | wymaga najpierw K2 |
 | K7 transakcja uploadu | świadoma, udokumentowana decyzja, której przesłanka w dużej mierze trzyma; skutek błędu to zmarnowana praca, nie uszkodzenie danych |
 | K8 dwa znaczenia `is_direct` | wchłonięte przez #2 (ta sama technika expand/contract na tym samym szwie) |
+
+## Weryfikacja twierdzeń (ast-grep)
+
+ast-grep 0.51.0, commit c2340d0 (kod `backend/` i `web/` bez zmian od 8bcf698, `git diff --stat` puste), katalogi `backend/internal/catalog`, `backend/cmd`, `web/app/lib`. Każde zero z ast-grep sprawdzone grepem. Jak w L3: wywołania metod Go przez reguły YAML `kind: call_expression` + `selector_expression`; wzorzec liniowy `$R.ParseMultipartForm($$$)` dał 0 przy 2 trafieniach grepa. Weryfikacja dotyczy twierdzeń strukturalnych rankingu i sekcji K, z których ranking korzysta; cytaty z archiwum i historia commitów są poza jej zakresem. **Ranking się nie zmienia.**
+
+| # | Twierdzenie (pozycja) | Werdykt | Dowód (plik:linia) | Metoda |
+|---|---|---|---|---|
+| R1 | `Store` ma 18 metod: 11 w `store.go`, 7 w `project.go` (K2) | potwierdzone | `store.go:107, 135, 159, 230, 263, 304, 327, 342, 384, 466, 487`; `project.go:51, 73, 107, 149, 164, 194, 242`; grep `^func (s \*Store)`: 18 | `func ($S *Store) $M($$$A) $R { $$$B }` |
+| R2 | 14 funkcji produkcyjnych przyjmuje `*Store` wprost (K2) | **obalone liczbowo → 13** | 11 handlerów (`handlers.go:71, 156, 185, 232, 301, 325, 352, 396`, `project_handlers.go:28, 163, 233`), `queue.go:71`, `pipeline.go:35` | reguła `parameter_declaration` z `pointer_type` `*Store`; grep |
+| R3 | Trzy ścieżki odczytu `strategic_marks` (#1, K2) | doprecyzowane | 5 literałów odczytu: `store.go:187, 425, 494`, `project.go:201, 244`; zapisy `store.go:441, 468`; poza blokiem znaczników (`store.go:369-521`) czytają tylko `store.go:187`, `project.go:201, 244`. Pominięty odczyt to zapytanie limitu w `MarkStrategic`, które już jest w bloku znaczników, więc wniosek #1 trzyma | reguła: string literal `regex: strategic_marks` |
+| R4 | Reguła „kategoria przejrzana” ukryta w prywatnej metodzie raportu (#1) | potwierdzone | `reviewedCategories` `project.go:242`, jedyne wywołanie `project.go:195` (z `ProjectReport`) | reguła `call_expression` |
+| R5 | `projectExists` i `reviewedCategories` to niewyeksportowane metody współdzielone między plikami (K6) | doprecyzowane | między plikami tylko `projectExists` (`project_handlers.go:168`); `reviewedCategories` zostaje w `project.go`. Argument „podział pakietów wymaga najpierw K2” trzyma się na `projectExists` | reguła `call_expression` |
+| R6 | Dwa sposoby rozwiązania bibliotek po insercie (K2) | potwierdzone | `ListLibraries(BatchID)` `handlers.go:132`; `LibrariesByPurls` `project_handlers.go:90` | reguła `call_expression` |
+| R7 | Brak DTO: kształty JSON to struktury domenowe z osadzaniem (#2) | potwierdzone | osadzenie `Library` tylko w `libraryResponse` (`handlers.go:176-180`) i `projectReportLibrary` (`project_handlers.go:147-151`); `Library` `store.go:54-64` | `type $N struct { $$$ }`, grep `^\s*Library$` |
+| R8 | `ProjectReportRow` ma tagi JSON, ale nie jest serializowany (#2) | potwierdzone | definicja `project.go:33-45`; handler koduje `[]projectReportLibrary` (`project_handlers.go:219-225`), `ProjectReportRow` tylko jako typ pośredni | grep `ProjectReportRow` |
+| R9 | `SkippedRow` bez tagów (#2, #3) | potwierdzone | `sbom.go:13-16` (V11) | `type SkippedRow struct { $$$ }` |
+| R10 | `json_contract_test.go` sprawdza tylko `[]` vs `null` (#2) | potwierdzone | pomocniki `assertNoNullArrays` (:23), `assertEmptyArrayField` (:59); handlery w teście: listy bibliotek (2), `BatchProgressHandler`, `UploadHandler`, `ProjectUploadHandler`; brak `ProjectReportHandler` i `ListProjectsHandler`; żadnej asercji zbioru kluczy | grep `Handler(` |
+| R11 | Test raportu dekoduje do typu Go (#2) | potwierdzone | `var resp []projectReportLibrary` + `json.Unmarshal` `project_handlers_test.go:489-490` | grep, `json.Unmarshal($$$)` |
+| R12 | Typy TS to częściowe widoki; `organization.ts` dodaje `is_direct`, `strategic`, `error_detail` (#2) | doprecyzowane | `catalog.ts:6-15` bez trzech pól; `OrganizationLibrary = Library & {is_direct, strategic}` (`organization.ts:10-13`); `error_detail` (`store.go:63`, `omitempty`) nie ma w żadnym pliku `web/app` | `export type $N = { $$$ }`, grep |
+| R13 | `handlers.go` ma 439 linii i pomocniki pakietowe (#3) | potwierdzone | `wc -l`: 439; `Enqueuer` :19, `maxUploadBytes` :40, `writeCatalogError` :57, `newBatchID` :429 | grep |
+| R14 | `writeCatalogError`: 27 wywołań w `handlers.go`, 14 w `project_handlers.go` (#3) | **obalone liczbowo → 26** | ast-grep 26 + 14; grep 27 w `handlers.go` liczy też definicję | `writeCatalogError($$$)` |
+| R15 | `noopEnqueuer` / `NewNoopEnqueuer` to martwy kod bez wywołań, także w testach (#3) | potwierdzone | jedyne wystąpienia w `handlers.go:23-32` (definicje i komentarze) w całym `backend/` | grep |
+| R16 | Powtórzony prolog multipart w obu uploadach (#3) | potwierdzone | `MaxBytesReader` `handlers.go:73` / `project_handlers.go:30`; `ParseMultipartForm(32 << 20)` `:79` / `:42`; `FormFile("file")` `:93` / `:56` | `http.MaxBytesReader($$$)`; grep (wzorzec metody: 0) |
+| R17 | `ParseProjectSBOM` nie ma testów błędu dekodowania, złego `bomFormat` i braku komponentów (#3) | potwierdzone | `TestParseProjectSBOM` (`project_sbom_test.go:146`) ma 4 podtesty, żaden nie sprawdza błędu; gałęzie istnieją w `project_sbom.go:28-33`; `ParseCycloneDXSBOM` ma je w `sbom_test.go:54, 61` | grep `t.Run` |
+| R18 | Upload: 5 niezależnych wywołań, transakcyjne tylko `ReplaceProjectLibraries` (K7) | potwierdzone, doprecyzowane | `project_handlers.go:81, 90, 103, 107, 117`; `pool.Begin` w produkcji: `project.go:108` i `store.go:385` (`MarkStrategic`, poza uploadem) | grep `store\.`, `Begin(` |
+
+Dwa twierdzenia obalone liczbowo (R2, R14), żadne co do kierunku. Zmiany w treści: K2 (R2, R3, R6), K3 (R8, R11, R12), K6 (R5, R14), K7 (R18), pozycja #1 (R3). Kotwice z sekcji „Historia i intencjonalność” (archiwum, commity) nie były przedmiotem tej weryfikacji.
 
 ## Open Questions
 
