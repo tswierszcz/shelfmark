@@ -2,11 +2,18 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+// ErrProjectNotFound is returned when a project deletion matches no row or
+// the supplied project ID is not a valid UUID.
+var ErrProjectNotFound = errors.New("catalog: project not found")
 
 // Project is a full projects row: a named, free-text-identified grouping of
 // libraries uploaded together via a project SBOM.
@@ -63,6 +70,23 @@ func (s *Store) FindOrCreateProject(ctx context.Context, name, createdBy string)
 	}
 
 	return &p, nil
+}
+
+// DeleteProject removes a project and relies on the project_libraries foreign
+// key cascade to remove its library membership.
+func (s *Store) DeleteProject(ctx context.Context, projectID string) error {
+	result, err := s.pool.Exec(ctx, `DELETE FROM projects WHERE id = $1`, projectID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.InvalidTextRepresentation {
+			return ErrProjectNotFound
+		}
+		return fmt.Errorf("catalog: failed to delete project: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrProjectNotFound
+	}
+	return nil
 }
 
 // LibrariesByPurls resolves full Library rows for purls, independent of

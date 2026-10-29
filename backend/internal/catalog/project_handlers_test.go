@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
@@ -556,6 +557,122 @@ func TestProjectReportHandler_UnknownProjectReturns404(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDeleteProject_RemovesMembershipAndPreservesCatalogAndOtherProject(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	queue := &recordingEnqueuer{}
+	t.Setenv("SESSION_SECRET", "test-secret")
+	cookie := authtest.SessionCookie(t, "architect@example.com", auth.RoleArchitect)
+	ctx := context.Background()
+
+	a := doProjectUpload(t, store, queue, cookie, "Delete A", "a.json", []byte(projectFixtureSBOM))
+	b := doProjectUpload(t, store, queue, cookie, "Keep B", "b.json", []byte(projectFixtureSBOMSingleDirect))
+	categories, err := store.ListTaxonomy(ctx)
+	if err != nil || len(categories) == 0 {
+		t.Fatalf("ListTaxonomy: err=%v categories=%+v", err, categories)
+	}
+	libs, err := store.LibrariesByPurls(ctx, []string{"pkg:maven/com.google.guava/guava@32.0.0"})
+	if err != nil || len(libs) != 1 {
+		t.Fatalf("resolve shared library: err=%v libs=%+v", err, libs)
+	}
+	shared := libs[0]
+	if err := store.AttachCategory(ctx, shared.ID, categories[0].ID, "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkStrategic(ctx, shared.ID, categories[0].ID, "shared standard", "architect@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	beforeB, err := store.ProjectReport(ctx, b.ProjectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler := DeleteProjectHandler(store)
+	req := httptest.NewRequest(http.MethodDelete, "/api/projects/"+a.ProjectID, nil)
+	req.SetPathValue("projectID", a.ProjectID)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	auth.RequireRole(auth.RoleArchitect)(handler)(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	projects, err := store.ListProjects(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range projects {
+		if p.ID == a.ProjectID {
+			t.Fatalf("deleted project remains in list: %+v", projects)
+		}
+	}
+	projectsHandler := ProjectReportHandler(store)
+	req = httptest.NewRequest(http.MethodGet, "/api/projects/"+a.ProjectID+"/report", nil)
+	req.SetPathValue("projectID", a.ProjectID)
+	rec = httptest.NewRecorder()
+	projectsHandler(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("deleted project's report: expected 404, got %d", rec.Code)
+	}
+	afterB, err := store.ProjectReport(ctx, b.ProjectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(beforeB, afterB) {
+		t.Fatalf("other project's report changed: before=%+v after=%+v", beforeB, afterB)
+	}
+	organizationLibraries, err := store.ListLibraries(ctx, LibraryFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deletedOnlyLibrary *Library
+	for i := range organizationLibraries {
+		if organizationLibraries[i].Purl == "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0" {
+			deletedOnlyLibrary = &organizationLibraries[i]
+			break
+		}
+	}
+	if deletedOnlyLibrary == nil {
+		t.Fatal("library used only by deleted project was removed from the catalog")
+	}
+	if deletedOnlyLibrary.IsDirect {
+		t.Fatal("library used only by deleted project is still direct in the organization view")
+	}
+	remaining, err := store.LibrariesByPurls(ctx, []string{"pkg:maven/com.google.guava/guava@32.0.0"})
+	if err != nil || len(remaining) != 1 {
+		t.Fatalf("library was removed: err=%v libraries=%+v", err, remaining)
+	}
+	marks, err := store.StrategicMarksByLibrary(ctx, []string{shared.ID})
+	if err != nil || len(marks[shared.ID]) != 1 {
+		t.Fatalf("strategic mark changed: err=%v marks=%+v", err, marks)
+	}
+
+	var memberships int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM project_libraries WHERE project_id = $1`, a.ProjectID).Scan(&memberships); err != nil {
+		t.Fatal(err)
+	}
+	if memberships != 0 {
+		t.Fatalf("expected cascade to remove memberships, found %d", memberships)
+	}
+}
+
+func TestDeleteProject_NotFoundAndInvalidUUID(t *testing.T) {
+	pool := startTestPostgres(t)
+	store := NewStore(pool)
+	handler := DeleteProjectHandler(store)
+	for _, id := range []string{"00000000-0000-0000-0000-000000000000", "not-a-uuid"} {
+		t.Run(id, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodDelete, "/api/projects/"+id, nil)
+			req.SetPathValue("projectID", id)
+			rec := httptest.NewRecorder()
+			handler(rec, req)
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("expected 404, got %d: %s", rec.Code, rec.Body.String())
+			}
+		})
 	}
 }
 

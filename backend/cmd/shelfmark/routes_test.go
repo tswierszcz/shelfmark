@@ -34,6 +34,7 @@ var expectedRoles = map[string][]auth.Role{
 	"DELETE /api/organization/libraries/{libraryID}/categories/{categoryID}/strategic": {auth.RoleArchitect},
 	"POST /api/projects/upload":            {auth.RoleArchitect},
 	"GET /api/projects":                    {auth.RoleArchitect, auth.RoleViewer},
+	"DELETE /api/projects/{projectID}":     {auth.RoleArchitect},
 	"GET /api/projects/{projectID}/report": {auth.RoleArchitect, auth.RoleViewer},
 }
 

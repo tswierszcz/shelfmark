@@ -98,7 +98,7 @@ Login required (email + password); accounts/roles provisioned via instance confi
 | Architect | Uploads project SBOMs for analysis; sets and changes recommendations (standard / to retire) with justification |
 | Viewer | Views reports and current recommendations; no edit capabilities |
 
-Project SBOM upload is Architect-only; project lists and redundancy reports are available to Architect and Viewer (enforced per route and locked by `backend/cmd/shelfmark/routes_test.go`).
+Project SBOM upload and project deletion are Architect-only; project lists and redundancy reports are available to Architect and Viewer (enforced per route and locked by `backend/cmd/shelfmark/routes_test.go`).
 
 Accounts are now managed through an in-app admin page backed by a database table, with the original `.env` variables retained only as the one-time bootstrap source for a fresh deployment.
 
