@@ -1,7 +1,7 @@
 ---
 change_id: testing-frontend-harness
 title: Testing frontend harness
-status: implementing
+status: implemented
 created: 2026-10-29
 updated: 2026-10-29
 archived_at: null

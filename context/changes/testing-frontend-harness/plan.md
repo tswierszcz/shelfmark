@@ -384,10 +384,10 @@ Not applicable: no schema or data changes.
 
 #### Automated
 
-- [x] 4.1 Hook tests pass: `cd backend && go test ./hooktest/...`
-- [x] 4.2 Frontend tests pass: `cd web && npm test`
-- [x] 4.3 `grep -n "TBD — see §3 Phase 4" context/foundation/test-plan.md` returns no matches
+- [x] 4.1 Hook tests pass: `cd backend && go test ./hooktest/...` — 59fc885
+- [x] 4.2 Frontend tests pass: `cd web && npm test` — 59fc885
+- [x] 4.3 `grep -n "TBD — see §3 Phase 4" context/foundation/test-plan.md` returns no matches — 59fc885
 
 #### Manual
 
-- [x] 4.4 Editing a route so a test fails and ending a turn makes the hook block with "Web tests fail"; reverting lets the turn end
+- [x] 4.4 Editing a route so a test fails and ending a turn makes the hook block with "Web tests fail"; reverting lets the turn end — 59fc885
