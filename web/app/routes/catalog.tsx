@@ -10,21 +10,16 @@ import {
   type Category,
   type Library,
 } from "../lib/catalog";
+import {
+  describeBatch,
+  isBatchSettled,
+  POLL_INTERVAL_MS,
+  POLL_MAX_DURATION_MS,
+  type PollOutcome,
+} from "../lib/batch";
 import { RequireAuth } from "../lib/require-auth";
 import { Button } from "../components/button";
 import { Nav } from "../components/nav";
-
-const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
-const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_DURATION_MS = 60_000;
-
-function isBatchSettled(progress: BatchProgress): boolean {
-  const statuses = Object.keys(progress);
-  if (statuses.length === 0) {
-    return false;
-  }
-  return statuses.every((status) => SETTLED_STATUSES.has(status));
-}
 
 function CatalogContent() {
   const [file, setFile] = useState<File | null>(null);
@@ -35,6 +30,7 @@ function CatalogContent() {
   const [batchId, setBatchId] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
   const [polling, setPolling] = useState(false);
+  const [pollOutcome, setPollOutcome] = useState<PollOutcome | null>(null);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -46,6 +42,7 @@ function CatalogContent() {
 
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
   const [attaching, setAttaching] = useState<string | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -88,6 +85,7 @@ function CatalogContent() {
   function startPolling(id: string) {
     const startedAt = Date.now();
     setPolling(true);
+    setPollOutcome(null);
 
     async function poll() {
       try {
@@ -99,6 +97,7 @@ function CatalogContent() {
 
         if (settled || timedOut) {
           setPolling(false);
+          setPollOutcome(settled ? "settled" : "timeout");
           refreshLibraries();
           return;
         }
@@ -109,6 +108,7 @@ function CatalogContent() {
         // whatever state it last showed — refresh once with whatever is
         // actually in the database before giving up.
         setPolling(false);
+        setPollOutcome("error");
         refreshLibraries();
       }
     }
@@ -143,10 +143,13 @@ function CatalogContent() {
       return;
     }
 
+    setAttachError(null);
     setAttaching(libraryId);
     try {
       await attachCategory(libraryId, categoryId);
       await refreshLibraries();
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : "Failed to add category.");
     } finally {
       setAttaching(null);
     }
@@ -199,10 +202,15 @@ function CatalogContent() {
 
         {batchId && (
           <div className="mt-4 text-sm">
-            <p>
-              Batch <span className="font-mono">{batchId}</span>
-              {polling ? " — processing…" : " — done"}
-            </p>
+            {(() => {
+              const batch = describeBatch(polling, pollOutcome, batchProgress);
+              return (
+                <p className={batch.problem ? "text-destructive" : undefined}>
+                  Batch <span className="font-mono">{batchId}</span>
+                  {batch.text}
+                </p>
+              );
+            })()}
             {batchProgress && (
               <ul className="mt-1 flex flex-wrap gap-3">
                 {Object.entries(batchProgress).map(([status, count]) => (
@@ -275,6 +283,9 @@ function CatalogContent() {
 
         {librariesError && (
           <p className="mt-2 text-sm text-destructive">{librariesError}</p>
+        )}
+        {attachError && (
+          <p className="mt-2 text-sm text-destructive">{attachError}</p>
         )}
 
         <div className="mt-4 overflow-x-auto">

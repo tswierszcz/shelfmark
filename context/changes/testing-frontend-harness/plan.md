@@ -341,29 +341,29 @@ Not applicable: no schema or data changes.
 
 #### Automated
 
-- [x] 1.1 Frontend tests pass: `cd web && npm test`
-- [x] 1.2 Type checking passes: `cd web && npm run typecheck`
-- [x] 1.3 Build passes: `cd web && npm run build`
-- [x] 1.4 Breaking the wrong-role redirect in `require-auth.tsx` makes `npm test` fail, and restoring it makes it pass
-- [x] 1.5 A throwaway test that calls `console.error` fails under the `setup.ts` guard (then removed)
+- [x] 1.1 Frontend tests pass: `cd web && npm test` — 6d539d1
+- [x] 1.2 Type checking passes: `cd web && npm run typecheck` — 6d539d1
+- [x] 1.3 Build passes: `cd web && npm run build` — 6d539d1
+- [x] 1.4 Breaking the wrong-role redirect in `require-auth.tsx` makes `npm test` fail, and restoring it makes it pass — 6d539d1
+- [x] 1.5 A throwaway test that calls `console.error` fails under the `setup.ts` guard (then removed) — 6d539d1
 
 #### Manual
 
-- [x] 1.6 `npm test` finishes in under 30 s locally
+- [x] 1.6 `npm test` finishes in under 30 s locally — 6d539d1
 
 ### Phase 2: Shared batch logic + /catalog fixes
 
 #### Automated
 
-- [ ] 2.1 Frontend tests pass: `cd web && npm test`
-- [ ] 2.2 Type checking passes: `cd web && npm run typecheck`
-- [ ] 2.3 Build passes: `cd web && npm run build`
-- [ ] 2.4 `grep -n "function describeBatch\|function isBatchSettled" web/app/routes/*.tsx` returns no matches
+- [x] 2.1 Frontend tests pass: `cd web && npm test`
+- [x] 2.2 Type checking passes: `cd web && npm run typecheck`
+- [x] 2.3 Build passes: `cd web && npm run build`
+- [x] 2.4 `grep -n "function describeBatch\|function isBatchSettled" web/app/routes/*.tsx` returns no matches
 
 #### Manual
 
-- [ ] 2.5 On a local build, as admin, uploading `docs/samples/smoke-catalog.csv` twice: the second upload's batch line settles at once with "— done: no new libraries to categorize"
-- [ ] 2.6 `/redundancy` batch line still behaves as before for a fresh and a repeated SBOM upload (architect)
+- [x] 2.5 On a local build, as admin, uploading `docs/samples/smoke-catalog.csv` twice: the second upload's batch line settles at once with "— done: no new libraries to categorize"
+- [x] 2.6 `/redundancy` batch line still behaves as before for a fresh and a repeated SBOM upload (architect)
 
 ### Phase 3: List states in 4 routes
 
