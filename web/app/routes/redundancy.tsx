@@ -2,6 +2,13 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { BatchProgress } from "../lib/catalog";
 import {
+  describeBatch,
+  isBatchSettled,
+  POLL_INTERVAL_MS,
+  POLL_MAX_DURATION_MS,
+  type PollOutcome,
+} from "../lib/batch";
+import {
   getBatchProgress,
   getProjectReport,
   deleteProject,
@@ -16,53 +23,6 @@ import { Nav } from "../components/nav";
 import { Button } from "../components/button";
 import { Badge } from "../components/badge";
 import { LibraryStatusBadge } from "../components/library-status-badge";
-
-const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
-const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_DURATION_MS = 60_000;
-
-// An empty progress map is settled: the upload writes its libraries before
-// responding, so a batch with no libraries means every purl was already in
-// the catalog and nothing was enqueued.
-function isBatchSettled(progress: BatchProgress): boolean {
-  return Object.keys(progress).every((status) => SETTLED_STATUSES.has(status));
-}
-
-type PollOutcome = "settled" | "timeout" | "error";
-
-// describeBatch turns the poll state into the batch line's suffix. "done"
-// alone means every library was categorized; anything that needs review or
-// failed is named, so an incomplete result never reads as plain success.
-function describeBatch(
-  polling: boolean,
-  outcome: PollOutcome | null,
-  progress: BatchProgress | null,
-): { text: string; problem: boolean } {
-  if (polling || outcome === null) {
-    return { text: " — processing…", problem: false };
-  }
-  if (outcome === "error") {
-    return { text: " — status unavailable", problem: true };
-  }
-  if (outcome === "timeout") {
-    return { text: " — still processing", problem: false };
-  }
-
-  if (progress && Object.keys(progress).length === 0) {
-    return { text: " — done: no new libraries to categorize", problem: false };
-  }
-
-  const needReview = progress?.needs_manual ?? 0;
-  const failed = progress?.failed ?? 0;
-  const issues = [
-    needReview > 0 ? `${needReview} ${needReview === 1 ? "needs" : "need"} review` : null,
-    failed > 0 ? `${failed} failed` : null,
-  ].filter((part) => part !== null);
-  if (issues.length === 0) {
-    return { text: " — done", problem: false };
-  }
-  return { text: ` — done: ${issues.join(", ")}`, problem: true };
-}
 
 function RedundancyContent() {
   const { me } = useAuth();
@@ -84,12 +44,14 @@ function RedundancyContent() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [report, setReport] = useState<ProjectReportLibrary[]>([]);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollToken = useRef(0);
+  const reportToken = useRef(0);
 
   async function refreshProjects() {
     try {
@@ -104,16 +66,29 @@ function RedundancyContent() {
   }
 
   async function refreshReport(projectId: string) {
+    // Only the latest request may touch the table: a slower answer for a
+    // project picked earlier must not land under the one picked now.
+    const token = ++reportToken.current;
     if (!projectId) {
       setReport([]);
+      setReportLoading(false);
       return;
     }
+    // Clear the previous project's rows so they never sit next to a new
+    // project's loading state or error.
+    setReport([]);
+    setReportLoading(true);
     try {
       setReportError(null);
       const result = await getProjectReport(projectId);
+      if (reportToken.current !== token) return;
       setReport(result ?? []);
     } catch (err) {
+      if (reportToken.current !== token) return;
+      setReport([]);
       setReportError(err instanceof Error ? err.message : "Failed to load report.");
+    } finally {
+      if (reportToken.current === token) setReportLoading(false);
     }
   }
 
@@ -366,7 +341,8 @@ function RedundancyContent() {
               </thead>
               <tbody>
                 {report.map((library) => {
-                  const retireCandidate = library.categories.some(
+                  const categories = library.categories ?? [];
+                  const retireCandidate = categories.some(
                     (category) => category.retire_candidate,
                   );
 
@@ -376,11 +352,11 @@ function RedundancyContent() {
                       <td className="py-2 pr-4">{library.is_direct ? "Yes" : "No"}</td>
                       <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
                       <td className="py-2 pr-4">
-                        {library.categories.length === 0 ? (
+                        {categories.length === 0 ? (
                           <LibraryStatusBadge status={library.status} />
                         ) : (
                           <ul className="space-y-1">
-                            {library.categories.map((category) => (
+                            {categories.map((category) => (
                               <li
                                 key={category.category_id}
                                 className="flex flex-wrap items-center gap-2"
@@ -405,7 +381,14 @@ function RedundancyContent() {
                     </tr>
                   );
                 })}
-                {report.length === 0 && (
+                {reportLoading && report.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-ink-faint">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {!reportLoading && !reportError && report.length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-4 text-center text-ink-faint">
                       No libraries recorded for this project.

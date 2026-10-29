@@ -1,10 +1,10 @@
 ---
 change_id: redundancy-flow-analysis
 title: Research of the SBOM upload → enrichment → redundancy report flow
-status: preparing
+status: archived
 created: 2026-10-27
-updated: 2026-10-27
-archived_at: null
+updated: 2026-10-29
+archived_at: 2026-10-29T18:46:06Z
 ---
 
 ## Notes

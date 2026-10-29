@@ -10,21 +10,16 @@ import {
   type Category,
   type Library,
 } from "../lib/catalog";
+import {
+  describeBatch,
+  isBatchSettled,
+  POLL_INTERVAL_MS,
+  POLL_MAX_DURATION_MS,
+  type PollOutcome,
+} from "../lib/batch";
 import { RequireAuth } from "../lib/require-auth";
 import { Button } from "../components/button";
 import { Nav } from "../components/nav";
-
-const SETTLED_STATUSES = new Set(["categorized", "needs_manual", "failed"]);
-const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_DURATION_MS = 60_000;
-
-function isBatchSettled(progress: BatchProgress): boolean {
-  const statuses = Object.keys(progress);
-  if (statuses.length === 0) {
-    return false;
-  }
-  return statuses.every((status) => SETTLED_STATUSES.has(status));
-}
 
 function CatalogContent() {
   const [file, setFile] = useState<File | null>(null);
@@ -35,6 +30,7 @@ function CatalogContent() {
   const [batchId, setBatchId] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
   const [polling, setPolling] = useState(false);
+  const [pollOutcome, setPollOutcome] = useState<PollOutcome | null>(null);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -42,14 +38,19 @@ function CatalogContent() {
 
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [librariesError, setLibrariesError] = useState<string | null>(null);
+  // True from the first render so the empty row never flashes before data.
+  const [librariesLoading, setLibrariesLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
 
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
   const [attaching, setAttaching] = useState<string | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollToken = useRef(0);
 
   async function refreshLibraries() {
+    setLibrariesLoading(true);
     try {
       setLibrariesError(null);
       const filter = {
@@ -60,7 +61,10 @@ function CatalogContent() {
       const result = await listLibraries(filter);
       setLibraries(result ?? []);
     } catch {
+      setLibraries([]);
       setLibrariesError("Failed to load libraries.");
+    } finally {
+      setLibrariesLoading(false);
     }
   }
 
@@ -86,12 +90,22 @@ function CatalogContent() {
   }, []);
 
   function startPolling(id: string) {
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+
+    const token = ++pollToken.current;
     const startedAt = Date.now();
     setPolling(true);
+    setPollOutcome(null);
 
     async function poll() {
       try {
         const progress = await getBatchProgress(id);
+        if (pollToken.current !== token) {
+          return;
+        }
         setBatchProgress(progress);
 
         const settled = isBatchSettled(progress);
@@ -99,16 +113,21 @@ function CatalogContent() {
 
         if (settled || timedOut) {
           setPolling(false);
+          setPollOutcome(settled ? "settled" : "timeout");
           refreshLibraries();
           return;
         }
 
         pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
       } catch {
+        if (pollToken.current !== token) {
+          return;
+        }
         // A transient poll failure shouldn't silently freeze the table on
         // whatever state it last showed — refresh once with whatever is
         // actually in the database before giving up.
         setPolling(false);
+        setPollOutcome("error");
         refreshLibraries();
       }
     }
@@ -143,10 +162,13 @@ function CatalogContent() {
       return;
     }
 
+    setAttachError(null);
     setAttaching(libraryId);
     try {
       await attachCategory(libraryId, categoryId);
       await refreshLibraries();
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : "Failed to add category.");
     } finally {
       setAttaching(null);
     }
@@ -199,10 +221,15 @@ function CatalogContent() {
 
         {batchId && (
           <div className="mt-4 text-sm">
-            <p>
-              Batch <span className="font-mono">{batchId}</span>
-              {polling ? " — processing…" : " — done"}
-            </p>
+            {(() => {
+              const batch = describeBatch(polling, pollOutcome, batchProgress);
+              return (
+                <p className={batch.problem ? "text-destructive" : undefined}>
+                  Batch <span className="font-mono">{batchId}</span>
+                  {batch.text}
+                </p>
+              );
+            })()}
             {batchProgress && (
               <ul className="mt-1 flex flex-wrap gap-3">
                 {Object.entries(batchProgress).map(([status, count]) => (
@@ -276,6 +303,9 @@ function CatalogContent() {
         {librariesError && (
           <p className="mt-2 text-sm text-destructive">{librariesError}</p>
         )}
+        {attachError && (
+          <p className="mt-2 text-sm text-destructive">{attachError}</p>
+        )}
 
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -289,46 +319,56 @@ function CatalogContent() {
               </tr>
             </thead>
             <tbody>
-              {libraries.map((library) => (
-                <tr key={library.id} className="border-b border-rule">
-                  <td className="py-2 pr-4 font-mono">{library.purl}</td>
-                  <td className="py-2 pr-4">{library.status}</td>
-                  <td className="py-2 pr-4">
-                    {library.categories.length > 0 ? library.categories.join(", ") : "—"}
-                  </td>
-                  <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={selectedCategory[library.id] ?? ""}
-                        onChange={(event) =>
-                          setSelectedCategory((prev) => ({
-                            ...prev,
-                            [library.id]: event.target.value,
-                          }))
-                        }
-                        className="rounded border border-rule bg-bg-soft px-2 py-1 text-ink"
-                      >
-                        <option value="">Select…</option>
-                        {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                      <Button
-                        type="button"
-                        disabled={attaching === library.id || !selectedCategory[library.id]}
-                        onClick={() => handleAttach(library.id)}
-                        className="px-2 py-1 text-xs"
-                      >
-                        {attaching === library.id ? "Adding…" : "Add"}
-                      </Button>
-                    </div>
+              {libraries.map((library) => {
+                const libraryCategories = library.categories ?? [];
+                return (
+                  <tr key={library.id} className="border-b border-rule">
+                    <td className="py-2 pr-4 font-mono">{library.purl}</td>
+                    <td className="py-2 pr-4">{library.status}</td>
+                    <td className="py-2 pr-4">
+                      {libraryCategories.length > 0 ? libraryCategories.join(", ") : "—"}
+                    </td>
+                    <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
+                    <td className="py-2 pr-4">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedCategory[library.id] ?? ""}
+                          onChange={(event) =>
+                            setSelectedCategory((prev) => ({
+                              ...prev,
+                              [library.id]: event.target.value,
+                            }))
+                          }
+                          className="rounded border border-rule bg-bg-soft px-2 py-1 text-ink"
+                        >
+                          <option value="">Select…</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          type="button"
+                          disabled={attaching === library.id || !selectedCategory[library.id]}
+                          onClick={() => handleAttach(library.id)}
+                          className="px-2 py-1 text-xs"
+                        >
+                          {attaching === library.id ? "Adding…" : "Add"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {librariesLoading && libraries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-ink-faint">
+                    Loading…
                   </td>
                 </tr>
-              ))}
-              {libraries.length === 0 && (
+              )}
+              {!librariesLoading && !librariesError && libraries.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-4 text-center text-ink-faint">
                     No libraries match these filters.

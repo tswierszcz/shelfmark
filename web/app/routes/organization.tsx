@@ -24,6 +24,8 @@ function OrganizationContent() {
 
   const [libraries, setLibraries] = useState<OrganizationLibrary[]>([]);
   const [librariesError, setLibrariesError] = useState<string | null>(null);
+  // True from the first render so the empty row never flashes before data.
+  const [librariesLoading, setLibrariesLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
 
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -32,6 +34,7 @@ function OrganizationContent() {
   const [formError, setFormError] = useState<string | null>(null);
 
   async function refreshLibraries() {
+    setLibrariesLoading(true);
     try {
       setLibrariesError(null);
       const filter = {
@@ -44,7 +47,10 @@ function OrganizationContent() {
       const result = await listOrganizationLibraries(filter);
       setLibraries(result ?? []);
     } catch {
+      setLibraries([]);
       setLibrariesError("Failed to load libraries.");
+    } finally {
+      setLibrariesLoading(false);
     }
   }
 
@@ -210,91 +216,102 @@ function OrganizationContent() {
               </tr>
             </thead>
             <tbody>
-              {libraries.map((library) => (
-                <tr key={library.id} className="border-b border-rule">
-                  <td className="py-2 pr-4 font-mono">{library.purl}</td>
-                  <td className="py-2 pr-4">{library.status}</td>
-                  <td className="py-2 pr-4">{library.is_direct ? "Yes" : "No"}</td>
-                  <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
-                  <td className="py-2 pr-4">
-                    {library.categories.length === 0 ? (
-                      "—"
-                    ) : (
-                      <ul className="space-y-2">
-                        {library.categories.map((categoryName) => {
-                          const categoryId = categoryIdForName(categoryName);
-                          const mark = library.strategic.find(
-                            (entry) => entry.category_name === categoryName,
-                          );
-                          const key = categoryId
-                            ? formKey(library.id, categoryId)
-                            : undefined;
+              {libraries.map((library) => {
+                const libraryCategories = library.categories ?? [];
+                const strategicMarks = library.strategic ?? [];
+                return (
+                  <tr key={library.id} className="border-b border-rule">
+                    <td className="py-2 pr-4 font-mono">{library.purl}</td>
+                    <td className="py-2 pr-4">{library.status}</td>
+                    <td className="py-2 pr-4">{library.is_direct ? "Yes" : "No"}</td>
+                    <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
+                    <td className="py-2 pr-4">
+                      {libraryCategories.length === 0 ? (
+                        "—"
+                      ) : (
+                        <ul className="space-y-2">
+                          {libraryCategories.map((categoryName) => {
+                            const categoryId = categoryIdForName(categoryName);
+                            const mark = strategicMarks.find(
+                              (entry) => entry.category_name === categoryName,
+                            );
+                            const key = categoryId
+                              ? formKey(library.id, categoryId)
+                              : undefined;
 
-                          return (
-                            <li key={categoryName}>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span>{categoryName}</span>
-                                {mark ? (
-                                  <span title={`${mark.justification} (by ${mark.marked_by})`}>
-                                    <Badge tone="accent">Strategic</Badge>
-                                  </span>
-                                ) : null}
+                            return (
+                              <li key={categoryName}>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span>{categoryName}</span>
+                                  {mark ? (
+                                    <span title={`${mark.justification} (by ${mark.marked_by})`}>
+                                      <Badge tone="accent">Strategic</Badge>
+                                    </span>
+                                  ) : null}
 
-                                {isArchitect && categoryId && key ? (
-                                  <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={() =>
-                                      setOpenForm((prev) => (prev === key ? null : key))
-                                    }
-                                    className="px-2 py-0.5 text-xs"
-                                  >
-                                    {mark ? "Unmark" : "Mark strategic"}
-                                  </Button>
-                                ) : null}
-                              </div>
-
-                              {isArchitect && categoryId && key && openForm === key ? (
-                                <div className="mt-1 flex flex-wrap items-start gap-2">
-                                  <textarea
-                                    value={justifications[key] ?? ""}
-                                    onChange={(event) =>
-                                      setJustifications((prev) => ({
-                                        ...prev,
-                                        [key]: event.target.value,
-                                      }))
-                                    }
-                                    placeholder="Justification"
-                                    rows={2}
-                                    className="w-64 rounded border border-rule bg-bg-soft px-2 py-1 text-xs text-ink"
-                                  />
-                                  <Button
-                                    type="button"
-                                    disabled={pendingKey === key}
-                                    onClick={() =>
-                                      mark
-                                        ? handleUnmark(library.id, categoryId)
-                                        : handleMark(library.id, categoryId)
-                                    }
-                                    className="px-2 py-1 text-xs"
-                                  >
-                                    {pendingKey === key
-                                      ? "Submitting…"
-                                      : mark
-                                        ? "Confirm unmark"
-                                        : "Confirm mark"}
-                                  </Button>
+                                  {isArchitect && categoryId && key ? (
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      onClick={() =>
+                                        setOpenForm((prev) => (prev === key ? null : key))
+                                      }
+                                      className="px-2 py-0.5 text-xs"
+                                    >
+                                      {mark ? "Unmark" : "Mark strategic"}
+                                    </Button>
+                                  ) : null}
                                 </div>
-                              ) : null}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
+
+                                {isArchitect && categoryId && key && openForm === key ? (
+                                  <div className="mt-1 flex flex-wrap items-start gap-2">
+                                    <textarea
+                                      value={justifications[key] ?? ""}
+                                      onChange={(event) =>
+                                        setJustifications((prev) => ({
+                                          ...prev,
+                                          [key]: event.target.value,
+                                        }))
+                                      }
+                                      placeholder="Justification"
+                                      rows={2}
+                                      className="w-64 rounded border border-rule bg-bg-soft px-2 py-1 text-xs text-ink"
+                                    />
+                                    <Button
+                                      type="button"
+                                      disabled={pendingKey === key}
+                                      onClick={() =>
+                                        mark
+                                          ? handleUnmark(library.id, categoryId)
+                                          : handleMark(library.id, categoryId)
+                                      }
+                                      className="px-2 py-1 text-xs"
+                                    >
+                                      {pendingKey === key
+                                        ? "Submitting…"
+                                        : mark
+                                          ? "Confirm unmark"
+                                          : "Confirm mark"}
+                                    </Button>
+                                  </div>
+                                ) : null}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {librariesLoading && libraries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-ink-faint">
+                    Loading…
                   </td>
                 </tr>
-              ))}
-              {libraries.length === 0 && (
+              )}
+              {!librariesLoading && !librariesError && libraries.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-4 text-center text-ink-faint">
                     No libraries match these filters.

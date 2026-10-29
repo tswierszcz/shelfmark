@@ -14,14 +14,20 @@ function UsersContent() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
+  // True from the first render so the empty row never flashes before data.
+  const [usersLoading, setUsersLoading] = useState(true);
 
   async function refreshUsers() {
+    setUsersLoading(true);
     try {
       setUsersError(null);
       const result = await listUsers();
       setUsers(result ?? []);
     } catch {
+      setUsers([]);
       setUsersError("Failed to load users.");
+    } finally {
+      setUsersLoading(false);
     }
   }
 
@@ -128,7 +134,14 @@ function UsersContent() {
                   <td className="py-2 pr-4">{user.role}</td>
                 </tr>
               ))}
-              {users.length === 0 && (
+              {usersLoading && users.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="py-4 text-center text-ink-faint">
+                    Loading…
+                  </td>
+                </tr>
+              )}
+              {!usersLoading && !usersError && users.length === 0 && (
                 <tr>
                   <td colSpan={2} className="py-4 text-center text-ink-faint">
                     No users yet.
