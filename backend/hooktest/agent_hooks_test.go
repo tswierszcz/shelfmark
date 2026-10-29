@@ -20,13 +20,19 @@ const (
 )
 
 // npxStub stands in for the web toolchain: typegen creates the generated
-// directory, tsc reports TS2322 for every app file containing BROKEN, and
-// STUB_TSC=missing makes npx fail the way a missing local binary does.
+// directory, tsc reports TS2322 for every app file containing BROKEN, vitest
+// fails every app file containing FAILING_TEST, and STUB_TSC=missing /
+// STUB_VITEST=missing make npx fail the way a missing local binary does.
 const npxStub = `#!/usr/bin/env bash
 if [ "$STUB_TSC" = "missing" ]; then echo "npm error could not determine executable to run" >&2; exit 1; fi
 if [ "$STUB_TSC" = "missing-tsc" ] && [[ "$*" == *tsc* ]]; then echo "npm error could not determine executable to run" >&2; exit 1; fi
+if [ "$STUB_VITEST" = "missing" ] && [[ "$*" == *vitest* ]]; then echo "npm error could not determine executable to run" >&2; exit 1; fi
 case "$*" in
   *typegen*) mkdir -p .react-router/types; exit 0 ;;
+  *vitest*)
+    rc=0
+    for f in $(grep -rl FAILING_TEST app 2>/dev/null); do echo " FAIL  $f > answer"; rc=1; done
+    exit $rc ;;
   *tsc*)
     rc=0
     for f in $(grep -rl BROKEN app 2>/dev/null); do echo "$f(1,1): error TS2322: Type 'string' is not assignable to type 'number'."; rc=2; done
@@ -72,6 +78,7 @@ func newFixture(t *testing.T) *fixture {
 	f.write("backend/pkg/answer_test.go", cleanGoTest)
 	f.write("backend/internal/catalog/catalog.go", "package catalog\n\n// Name is the package name.\nconst Name = \"catalog\"\n")
 	f.write("web/app/answer.ts", cleanTS)
+	f.write("web/vitest.config.ts", "export default {};\n")
 	f.write("web/.gitignore", "/.react-router/\n")
 	f.write("README.md", "fixture\n")
 	f.hooks = filepath.Join(f.root, ".claude", "hooks")
@@ -256,6 +263,19 @@ func TestStop_SweepsChangesWithOneRetry(t *testing.T) {
 	})
 
 	f.write("web/app/answer.ts", cleanTS)
+	f.write("web/app/answer.test.ts", "// FAILING_TEST\n")
+	t.Run("failing web test blocks", func(t *testing.T) {
+		wantBlock(t, f.stop(false), "Web tests fail", "app/answer.test.ts")
+	})
+	t.Run("missing vitest is reported, not silent", func(t *testing.T) {
+		r := f.stop(false, "STUB_VITEST=missing")
+		wantPass(t, r)
+		if !strings.Contains(r.stdout, "web tests (vitest not installed") {
+			t.Fatalf("expected a systemMessage naming the skipped web tests, got stdout:\n%s", r.stdout)
+		}
+	})
+
+	f.write("web/app/answer.test.ts", "// passes\n")
 	f.write("backend/internal/catalog/catalog.go", "package catalog\n\n// Name is the package name.\nconst Name = \"catalog!\"\n")
 	t.Run("catalog skip is reported, not silent", func(t *testing.T) {
 		r := f.stop(false)

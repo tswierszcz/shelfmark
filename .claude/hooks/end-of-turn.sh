@@ -3,7 +3,9 @@
 #   Go:  gofmt on changed .go files, go vet ./..., go build ./..., go test of the changed
 #        packages. internal/catalog is left out (its integration tests start a Postgres
 #        container per test, ~2 min) and the skip is reported, never silent.
-#   Web: react-router typegen when missing, then tsc for the whole web project.
+#   Web: react-router typegen when missing, then tsc for the whole web project, then
+#        `vitest run` once tsc is clean (when web/vitest.config.ts exists). A missing
+#        vitest binary is reported as a skip, never silent.
 # Also catches files rewritten through a shell command, which never reach the per-edit hook.
 export NO_COLOR=1 FORCE_COLOR=0
 command -v jq >/dev/null || { echo "Hook end-of-turn.sh needs jq: install it or port the hook to Node." >&2; exit 2; }
@@ -107,6 +109,19 @@ $GO_OUT
 Web typecheck fails ($ROOT/web):
 $WEB_OUT
 "
+    if [ -z "$WEB_OUT" ] && [ -f web/vitest.config.ts ]; then
+      TEST_OUT=$(cd web && npx --no-install vitest run 2>&1 </dev/null)
+      if [ $? -ne 0 ]; then
+        if printf '%s\n' "$TEST_OUT" | grep -q 'could not determine executable'; then
+          SKIPPED="$SKIPPED web tests (vitest not installed; run 'npm ci' in web/);"
+        else
+          REPORT="$REPORT
+Web tests fail ($ROOT/web):
+$(printf '%s\n' "$TEST_OUT" | tail -n 80)
+"
+        fi
+      fi
+    fi
   fi
 done
 

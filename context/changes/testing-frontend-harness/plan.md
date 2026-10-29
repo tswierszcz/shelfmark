@@ -369,25 +369,25 @@ Not applicable: no schema or data changes.
 
 #### Automated
 
-- [x] 3.1 Frontend tests pass: `cd web && npm test`
-- [x] 3.2 Type checking passes: `cd web && npm run typecheck`
-- [x] 3.3 Build passes: `cd web && npm run build`
-- [x] 3.4 Removing one `?? []` fallback or the `!error` empty-row guard makes `npm test` fail, and restoring it makes it pass
-- [x] 3.5 E2E still green: `cd web && npx playwright test`
+- [x] 3.1 Frontend tests pass: `cd web && npm test` — 64e0687
+- [x] 3.2 Type checking passes: `cd web && npm run typecheck` — 64e0687
+- [x] 3.3 Build passes: `cd web && npm run build` — 64e0687
+- [x] 3.4 Removing one `?? []` fallback or the `!error` empty-row guard makes `npm test` fail, and restoring it makes it pass — 64e0687
+- [x] 3.5 E2E still green: `cd web && npx playwright test` — 64e0687
 
 #### Manual
 
-- [x] 3.6 With the backend stopped (`/api/*` failing), `/users` as admin shows "Failed to load users." without "No users yet."
-- [x] 3.7 On a slow network (DevTools throttling), each list shows "Loading…" before data, with no flash of the empty row
+- [x] 3.6 With the backend stopped (`/api/*` failing), `/users` as admin shows "Failed to load users." without "No users yet." — 64e0687
+- [x] 3.7 On a slow network (DevTools throttling), each list shows "Loading…" before data, with no flash of the empty row — 64e0687
 
 ### Phase 4: Hook + docs
 
 #### Automated
 
-- [ ] 4.1 Hook tests pass: `cd backend && go test ./hooktest/...`
-- [ ] 4.2 Frontend tests pass: `cd web && npm test`
-- [ ] 4.3 `grep -n "TBD — see §3 Phase 4" context/foundation/test-plan.md` returns no matches
+- [x] 4.1 Hook tests pass: `cd backend && go test ./hooktest/...`
+- [x] 4.2 Frontend tests pass: `cd web && npm test`
+- [x] 4.3 `grep -n "TBD — see §3 Phase 4" context/foundation/test-plan.md` returns no matches
 
 #### Manual
 
-- [ ] 4.4 Editing a route so a test fails and ending a turn makes the hook block with "Web tests fail"; reverting lets the turn end
+- [x] 4.4 Editing a route so a test fails and ending a turn makes the hook block with "Web tests fail"; reverting lets the turn end
