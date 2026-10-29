@@ -44,6 +44,7 @@ function RedundancyContent() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [report, setReport] = useState<ProjectReportLibrary[]>([]);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -68,12 +69,19 @@ function RedundancyContent() {
       setReport([]);
       return;
     }
+    // Clear the previous project's rows so they never sit next to a new
+    // project's loading state or error.
+    setReport([]);
+    setReportLoading(true);
     try {
       setReportError(null);
       const result = await getProjectReport(projectId);
       setReport(result ?? []);
     } catch (err) {
+      setReport([]);
       setReportError(err instanceof Error ? err.message : "Failed to load report.");
+    } finally {
+      setReportLoading(false);
     }
   }
 
@@ -326,7 +334,8 @@ function RedundancyContent() {
               </thead>
               <tbody>
                 {report.map((library) => {
-                  const retireCandidate = library.categories.some(
+                  const categories = library.categories ?? [];
+                  const retireCandidate = categories.some(
                     (category) => category.retire_candidate,
                   );
 
@@ -336,11 +345,11 @@ function RedundancyContent() {
                       <td className="py-2 pr-4">{library.is_direct ? "Yes" : "No"}</td>
                       <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
                       <td className="py-2 pr-4">
-                        {library.categories.length === 0 ? (
+                        {categories.length === 0 ? (
                           <LibraryStatusBadge status={library.status} />
                         ) : (
                           <ul className="space-y-1">
-                            {library.categories.map((category) => (
+                            {categories.map((category) => (
                               <li
                                 key={category.category_id}
                                 className="flex flex-wrap items-center gap-2"
@@ -365,7 +374,14 @@ function RedundancyContent() {
                     </tr>
                   );
                 })}
-                {report.length === 0 && (
+                {reportLoading && report.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-ink-faint">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {!reportLoading && !reportError && report.length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-4 text-center text-ink-faint">
                       No libraries recorded for this project.

@@ -38,6 +38,8 @@ function CatalogContent() {
 
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [librariesError, setLibrariesError] = useState<string | null>(null);
+  // True from the first render so the empty row never flashes before data.
+  const [librariesLoading, setLibrariesLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
 
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
@@ -47,6 +49,7 @@ function CatalogContent() {
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function refreshLibraries() {
+    setLibrariesLoading(true);
     try {
       setLibrariesError(null);
       const filter = {
@@ -57,7 +60,10 @@ function CatalogContent() {
       const result = await listLibraries(filter);
       setLibraries(result ?? []);
     } catch {
+      setLibraries([]);
       setLibrariesError("Failed to load libraries.");
+    } finally {
+      setLibrariesLoading(false);
     }
   }
 
@@ -300,46 +306,56 @@ function CatalogContent() {
               </tr>
             </thead>
             <tbody>
-              {libraries.map((library) => (
-                <tr key={library.id} className="border-b border-rule">
-                  <td className="py-2 pr-4 font-mono">{library.purl}</td>
-                  <td className="py-2 pr-4">{library.status}</td>
-                  <td className="py-2 pr-4">
-                    {library.categories.length > 0 ? library.categories.join(", ") : "—"}
-                  </td>
-                  <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={selectedCategory[library.id] ?? ""}
-                        onChange={(event) =>
-                          setSelectedCategory((prev) => ({
-                            ...prev,
-                            [library.id]: event.target.value,
-                          }))
-                        }
-                        className="rounded border border-rule bg-bg-soft px-2 py-1 text-ink"
-                      >
-                        <option value="">Select…</option>
-                        {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                      <Button
-                        type="button"
-                        disabled={attaching === library.id || !selectedCategory[library.id]}
-                        onClick={() => handleAttach(library.id)}
-                        className="px-2 py-1 text-xs"
-                      >
-                        {attaching === library.id ? "Adding…" : "Add"}
-                      </Button>
-                    </div>
+              {libraries.map((library) => {
+                const libraryCategories = library.categories ?? [];
+                return (
+                  <tr key={library.id} className="border-b border-rule">
+                    <td className="py-2 pr-4 font-mono">{library.purl}</td>
+                    <td className="py-2 pr-4">{library.status}</td>
+                    <td className="py-2 pr-4">
+                      {libraryCategories.length > 0 ? libraryCategories.join(", ") : "—"}
+                    </td>
+                    <td className="py-2 pr-4">{library.github_repo ?? "—"}</td>
+                    <td className="py-2 pr-4">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedCategory[library.id] ?? ""}
+                          onChange={(event) =>
+                            setSelectedCategory((prev) => ({
+                              ...prev,
+                              [library.id]: event.target.value,
+                            }))
+                          }
+                          className="rounded border border-rule bg-bg-soft px-2 py-1 text-ink"
+                        >
+                          <option value="">Select…</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          type="button"
+                          disabled={attaching === library.id || !selectedCategory[library.id]}
+                          onClick={() => handleAttach(library.id)}
+                          className="px-2 py-1 text-xs"
+                        >
+                          {attaching === library.id ? "Adding…" : "Add"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {librariesLoading && libraries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-ink-faint">
+                    Loading…
                   </td>
                 </tr>
-              ))}
-              {libraries.length === 0 && (
+              )}
+              {!librariesLoading && !librariesError && libraries.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-4 text-center text-ink-faint">
                     No libraries match these filters.

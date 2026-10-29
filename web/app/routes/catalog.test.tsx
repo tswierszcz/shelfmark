@@ -5,6 +5,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
+import type { StubResponse } from "../test/fetch-stub";
 import { renderRoute } from "../test/render-route";
 import Catalog from "./catalog";
 
@@ -86,5 +87,96 @@ describe("/catalog add category", () => {
 
     expect(await screen.findByText("Failed to attach category")).toBeTruthy();
     expect(within(row).getByRole("button", { name: "Add" })).toBeTruthy();
+  });
+});
+
+// Risk: /catalog lies about its list state or crashes on a nil slice
+// (test-plan #5).
+const EMPTY_ROW = "No libraries match these filters.";
+
+function renderCatalogList(libraries: StubResponse, extra: Record<string, StubResponse> = {}) {
+  renderRoute(Catalog, {
+    path: "/catalog",
+    role: "admin",
+    fetch: {
+      "GET /api/catalog/categories": { body: [{ id: "cat-1", name: "String utils" }] },
+      "GET /api/catalog/libraries": libraries,
+      ...extra,
+    },
+  });
+}
+
+describe("/catalog list states", () => {
+  test("pending shows Loading… and no empty row", async () => {
+    renderCatalogList("pending");
+
+    await screen.findByRole("heading", { name: "Libraries" });
+    expect(screen.getByText("Loading…")).toBeTruthy();
+    expect(screen.queryByText(EMPTY_ROW)).toBeNull();
+  });
+
+  test("[] shows the empty row", async () => {
+    renderCatalogList({ body: [] });
+
+    expect(await screen.findByText(EMPTY_ROW)).toBeTruthy();
+    expect(screen.queryByText("Loading…")).toBeNull();
+  });
+
+  test("a top-level null body reads as empty, no crash", async () => {
+    renderCatalogList({ body: null });
+
+    expect(await screen.findByText(EMPTY_ROW)).toBeTruthy();
+  });
+
+  test("500 shows the error and no empty row", async () => {
+    renderCatalogList({ status: 500, body: { error: "boom" } });
+
+    expect(await screen.findByText("Failed to load libraries.")).toBeTruthy();
+    expect(screen.queryByText(EMPTY_ROW)).toBeNull();
+    expect(screen.queryByText("Loading…")).toBeNull();
+  });
+
+  test("a library with null categories still renders", async () => {
+    renderCatalogList({ body: [{ ...LIBRARY, categories: null }] });
+
+    const row = (await screen.findByText(LIBRARY.purl)).closest("tr")!;
+    expect(within(row).getByRole("button", { name: "Add" })).toBeTruthy();
+  });
+
+  test("data renders rows", async () => {
+    renderCatalogList({
+      body: [LIBRARY, { ...LIBRARY, id: "lib-2", purl: "pkg:npm/is-odd@3.0.1" }],
+    });
+
+    expect(await screen.findByText(LIBRARY.purl)).toBeTruthy();
+    expect(screen.getByText("pkg:npm/is-odd@3.0.1")).toBeTruthy();
+    expect(screen.queryByText(EMPTY_ROW)).toBeNull();
+  });
+
+  test("a filter refetch keeps rows visible with no Loading… row", async () => {
+    renderCatalogList(
+      { body: [LIBRARY] },
+      { "GET /api/catalog/libraries?status=failed": "pending" },
+    );
+    await screen.findByText(LIBRARY.purl);
+
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "failed" } });
+
+    expect(screen.getByText(LIBRARY.purl)).toBeTruthy();
+    expect(screen.queryByText("Loading…")).toBeNull();
+  });
+
+  test("a failed filter refetch clears the old rows", async () => {
+    renderCatalogList(
+      { body: [LIBRARY] },
+      { "GET /api/catalog/libraries?status=failed": { status: 500 } },
+    );
+    await screen.findByText(LIBRARY.purl);
+
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "failed" } });
+
+    expect(await screen.findByText("Failed to load libraries.")).toBeTruthy();
+    expect(screen.queryByText(LIBRARY.purl)).toBeNull();
+    expect(screen.queryByText(EMPTY_ROW)).toBeNull();
   });
 });

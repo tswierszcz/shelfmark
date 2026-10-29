@@ -355,30 +355,30 @@ Not applicable: no schema or data changes.
 
 #### Automated
 
-- [x] 2.1 Frontend tests pass: `cd web && npm test`
-- [x] 2.2 Type checking passes: `cd web && npm run typecheck`
-- [x] 2.3 Build passes: `cd web && npm run build`
-- [x] 2.4 `grep -n "function describeBatch\|function isBatchSettled" web/app/routes/*.tsx` returns no matches
+- [x] 2.1 Frontend tests pass: `cd web && npm test` — e9ae791
+- [x] 2.2 Type checking passes: `cd web && npm run typecheck` — e9ae791
+- [x] 2.3 Build passes: `cd web && npm run build` — e9ae791
+- [x] 2.4 `grep -n "function describeBatch\|function isBatchSettled" web/app/routes/*.tsx` returns no matches — e9ae791
 
 #### Manual
 
-- [x] 2.5 On a local build, as admin, uploading `docs/samples/smoke-catalog.csv` twice: the second upload's batch line settles at once with "— done: no new libraries to categorize"
-- [x] 2.6 `/redundancy` batch line still behaves as before for a fresh and a repeated SBOM upload (architect)
+- [x] 2.5 On a local build, as admin, uploading `docs/samples/smoke-catalog.csv` twice: the second upload's batch line settles at once with "— done: no new libraries to categorize" — e9ae791
+- [x] 2.6 `/redundancy` batch line still behaves as before for a fresh and a repeated SBOM upload (architect) — e9ae791
 
 ### Phase 3: List states in 4 routes
 
 #### Automated
 
-- [ ] 3.1 Frontend tests pass: `cd web && npm test`
-- [ ] 3.2 Type checking passes: `cd web && npm run typecheck`
-- [ ] 3.3 Build passes: `cd web && npm run build`
-- [ ] 3.4 Removing one `?? []` fallback or the `!error` empty-row guard makes `npm test` fail, and restoring it makes it pass
-- [ ] 3.5 E2E still green: `cd web && npx playwright test`
+- [x] 3.1 Frontend tests pass: `cd web && npm test`
+- [x] 3.2 Type checking passes: `cd web && npm run typecheck`
+- [x] 3.3 Build passes: `cd web && npm run build`
+- [x] 3.4 Removing one `?? []` fallback or the `!error` empty-row guard makes `npm test` fail, and restoring it makes it pass
+- [x] 3.5 E2E still green: `cd web && npx playwright test`
 
 #### Manual
 
-- [ ] 3.6 With the backend stopped (`/api/*` failing), `/users` as admin shows "Failed to load users." without "No users yet."
-- [ ] 3.7 On a slow network (DevTools throttling), each list shows "Loading…" before data, with no flash of the empty row
+- [x] 3.6 With the backend stopped (`/api/*` failing), `/users` as admin shows "Failed to load users." without "No users yet."
+- [x] 3.7 On a slow network (DevTools throttling), each list shows "Loading…" before data, with no flash of the empty row
 
 ### Phase 4: Hook + docs
 
