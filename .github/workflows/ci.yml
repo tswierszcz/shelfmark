@@ -1,5 +1,5 @@
 # CI/CD for Shelfmark. Every PR and every push to main runs the same checks as
-# the local hooks (go vet + go test, web typecheck + build). A push to main then
+# the local hooks (go vet + go test, web typecheck + tests + build). A push to main then
 # deploys to Fly.io with VERSION set to the commit sha (see docs/runbook.md,
 # "Deploy"). The deploy job skips with a notice when FLY_API_TOKEN is not set.
 
@@ -46,6 +46,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
 
   deploy:

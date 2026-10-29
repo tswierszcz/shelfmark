@@ -71,6 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCurrentUser(result);
         }
       })
+      .catch((err: unknown) => {
+        // A failing /api/me (500, network) reads as "no session" for now; log
+        // it so the rejection is not lost. See testing-frontend-harness
+        // research.md open question 1.
+        console.error("Failed to load the current user:", err);
+      })
       .finally(() => {
         if (active) {
           setLoading(false);
