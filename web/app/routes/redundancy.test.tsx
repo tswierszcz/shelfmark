@@ -55,6 +55,28 @@ async function selectProject(id: string) {
 }
 
 describe("/redundancy report states", () => {
+  test("a slow answer for an earlier project does not land under the current one", async () => {
+    let releaseFirst!: () => void;
+    const firstReport = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    renderRedundancy({
+      "GET /api/projects/p-1/report": { body: [LIBRARY], after: firstReport },
+      "GET /api/projects/p-2/report": { body: [] },
+    });
+    await screen.findByRole("heading", { name: "Report" });
+
+    await selectProject("p-1");
+    await selectProject("p-2");
+    expect(await screen.findByText(EMPTY_ROW)).toBeTruthy();
+
+    releaseFirst();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByText(EMPTY_ROW)).toBeTruthy();
+    expect(screen.queryByText(LIBRARY.purl)).toBeNull();
+  });
+
   test("pending shows Loading… and no empty row", async () => {
     renderRedundancy({ "GET /api/projects/p-1/report": "pending" });
     await screen.findByRole("heading", { name: "Report" });

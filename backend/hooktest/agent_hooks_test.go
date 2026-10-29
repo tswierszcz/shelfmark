@@ -262,6 +262,15 @@ func TestStop_SweepsChangesWithOneRetry(t *testing.T) {
 		wantBlock(t, f.stop(false), "Web typecheck fails", "app/answer.ts")
 	})
 
+	f.write("web/app/answer.test.ts", "// FAILING_TEST\n")
+	t.Run("type error stops web tests and says so", func(t *testing.T) {
+		r := f.stop(false)
+		wantBlock(t, r, "Web typecheck fails", "Web tests not run")
+		if strings.Contains(r.stderr, "Web tests fail") {
+			t.Fatalf("vitest ran although tsc failed:\n%s", r.stderr)
+		}
+	})
+
 	f.write("web/app/answer.ts", cleanTS)
 	f.write("web/app/answer.test.ts", "// FAILING_TEST\n")
 	t.Run("failing web test blocks", func(t *testing.T) {

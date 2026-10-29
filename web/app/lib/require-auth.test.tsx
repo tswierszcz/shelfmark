@@ -77,7 +77,7 @@ describe("AuthProvider", () => {
   // edit of this test.
   test("AuthProvider_ApiMe500_TreatedAsLoggedOut_Characterization", async () => {
     // The provider logs the failed /api/me instead of leaving it unhandled.
-    allowConsoleError();
+    allowConsoleError(/Failed to load the current user/);
     renderRoute(AdminPage, {
       role: "admin",
       fetch: { "/api/me": { status: 500, body: { error: "boom" } } },

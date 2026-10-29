@@ -47,6 +47,7 @@ function CatalogContent() {
   const [attachError, setAttachError] = useState<string | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollToken = useRef(0);
 
   async function refreshLibraries() {
     setLibrariesLoading(true);
@@ -89,6 +90,12 @@ function CatalogContent() {
   }, []);
 
   function startPolling(id: string) {
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+
+    const token = ++pollToken.current;
     const startedAt = Date.now();
     setPolling(true);
     setPollOutcome(null);
@@ -96,6 +103,9 @@ function CatalogContent() {
     async function poll() {
       try {
         const progress = await getBatchProgress(id);
+        if (pollToken.current !== token) {
+          return;
+        }
         setBatchProgress(progress);
 
         const settled = isBatchSettled(progress);
@@ -110,6 +120,9 @@ function CatalogContent() {
 
         pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
       } catch {
+        if (pollToken.current !== token) {
+          return;
+        }
         // A transient poll failure shouldn't silently freeze the table on
         // whatever state it last showed — refresh once with whatever is
         // actually in the database before giving up.

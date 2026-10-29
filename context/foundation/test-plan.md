@@ -105,7 +105,7 @@ If a row reads "none yet", that gap is addressed by the named rollout phase (§3
 | typecheck (`tsc` via `npm run typecheck`) + `go build` | local | required | syntactic / type drift |
 | Go unit + integration (`go test ./...`) | local | required after §3 Phase 1 | backend logic regressions |
 | frontend unit/component (`npm test`) | local (end-of-turn hook when web changed) + CI web job | required — wired 2026-10-29 | route state and frontend logic regressions |
-| post-edit hook | local (agent loop) | wired 2026-10-26 — `.claude/hooks/` (per edit: gofmt + go vet / tsc; end of turn: vet, build, tests of changed packages except `internal/catalog`, web tsc); proven by `backend/hooktest` | regressions at edit time |
+| post-edit hook | local (agent loop) | wired 2026-10-26 — `.claude/hooks/` (per edit: gofmt + go vet / tsc; end of turn: vet, build, tests of changed packages except `internal/catalog`, web tsc, then `vitest run` when tsc is clean); proven by `backend/hooktest` | regressions at edit time |
 | e2e on critical flows | CI on PR | not scoped by this rollout | broken critical user paths |
 
 ## 6. Cookbook Patterns
@@ -143,7 +143,7 @@ the relevant rollout phase ships; before that, the sub-section reads
 - Routes: `renderRoute(Route, { path, role, fetch })` from `web/app/test/render-route.tsx` renders the route's default export in the real `AuthProvider` and a router stub; `role` answers `/api/me` (`null` = 401), and `/login` / `/dashboard` render headings so redirects are assertable.
 - Stub `fetch` with raw bodies (`{ status, body }`, `body: null`, `"pending"`, `"network-error"`); never `vi.mock` a module in `app/lib`, because only raw `null` / 500 / `{error}` proves "regardless of response shape". Every request a route makes must be stubbed: an unmatched URL fails the test.
 - Cover per list: pending (loading), `[]` (empty), 500 (error and no empty row), top-level `null`, an item with a nested `null` array, data; plus the controls each role must or must not see.
-- `setup.ts` fails a test on any `console.error` (act() warnings, render errors); a test that expects one calls `allowConsoleError()` and says why. Vitest itself fails the run on an unhandled rejection.
+- `setup.ts` fails a test on any `console.error` (act() warnings, render errors); a test that expects one calls `allowConsoleError(/pattern/)` for that message only and says why. Vitest itself fails the run on an unhandled rejection.
 - Polling: assert outcomes through the pure helper; route-level tests should settle on the first poll or use fake timers, never wait out real intervals.
 - Prove the test guards something: break the production line, watch it go red, restore.
 
@@ -152,8 +152,8 @@ the relevant rollout phase ships; before that, the sub-section reads
 (Appended by `/10x-implement` after each phase lands.)
 
 - **Phase 1 — pipeline & input hardening (complete 2026-10-26):** 10MB upload cap on both upload endpoints; `sanitizeForPrompt` on purl fields and GitHub topics before LLM prompts; `libraries.error_detail` (migration 0007) persists the exhausted-retry reason, admin-only in the API; reconciliation test proves settled batch counts sum to the created count. Manual check surfaced that a bad `OPENROUTER_API_KEY` fails every library (401) — now visible in `error_detail`, but not logged server-side.
-- **Phase 4 — frontend functional test harness (2026-10-29):** Vitest + Testing Library harness with `renderRoute`/`stubFetch`; `RequireAuth` role-gate tests and a characterization of `/api/me` 500 read as logged out (now logged instead of an unhandled rejection); shared `lib/batch.ts` fixed `/catalog` reading timeout/error/empty batches as "done"; "Add category" errors are shown; 4 list routes have distinct loading/empty/error/data states and nested `?? []`. Wired into CI and the end-of-turn hook.
 - **Phase 2 — access control & data integrity (2026-10-26):** route × role denial matrix through the real router (35 cells); raw-JSON never-`null` tests for 5 endpoints — fixed live `"skipped": null` in both upload responses; strategic cap covered for 409, edges and concurrency — fixed a real race (concurrent marks reached 3–5 active) with `pg_advisory_xact_lock` per (category, ecosystem).
+- **Phase 4 — frontend functional test harness (2026-10-29):** Vitest + Testing Library harness with `renderRoute`/`stubFetch`; `RequireAuth` role-gate tests and a characterization of `/api/me` 500 read as logged out (now logged instead of an unhandled rejection); shared `lib/batch.ts` fixed `/catalog` reading timeout/error/empty batches as "done"; "Add category" errors are shown; 4 list routes have distinct loading/empty/error/data states and nested `?? []`. Wired into CI and the end-of-turn hook.
 
 ## 7. What We Deliberately Don't Test
 

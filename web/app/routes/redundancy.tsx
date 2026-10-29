@@ -51,6 +51,7 @@ function RedundancyContent() {
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollToken = useRef(0);
+  const reportToken = useRef(0);
 
   async function refreshProjects() {
     try {
@@ -65,8 +66,12 @@ function RedundancyContent() {
   }
 
   async function refreshReport(projectId: string) {
+    // Only the latest request may touch the table: a slower answer for a
+    // project picked earlier must not land under the one picked now.
+    const token = ++reportToken.current;
     if (!projectId) {
       setReport([]);
+      setReportLoading(false);
       return;
     }
     // Clear the previous project's rows so they never sit next to a new
@@ -76,12 +81,14 @@ function RedundancyContent() {
     try {
       setReportError(null);
       const result = await getProjectReport(projectId);
+      if (reportToken.current !== token) return;
       setReport(result ?? []);
     } catch (err) {
+      if (reportToken.current !== token) return;
       setReport([]);
       setReportError(err instanceof Error ? err.message : "Failed to load report.");
     } finally {
-      setReportLoading(false);
+      if (reportToken.current === token) setReportLoading(false);
     }
   }
 

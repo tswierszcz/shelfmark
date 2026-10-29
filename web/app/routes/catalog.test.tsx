@@ -5,7 +5,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
-import type { StubResponse } from "../test/fetch-stub";
+import { stubFetch, type StubResponse } from "../test/fetch-stub";
 import { renderRoute } from "../test/render-route";
 import Catalog from "./catalog";
 
@@ -62,6 +62,41 @@ describe("/catalog batch line", () => {
     const line = await screen.findByText(/— status unavailable/);
     expect(line.className).toContain("text-destructive");
     expect(screen.queryByText(/— done/)).toBeNull();
+  });
+});
+
+describe("/catalog overlapping uploads", () => {
+  test("a late answer for an earlier batch does not overwrite the current one", async () => {
+    let releaseFirst!: () => void;
+    const firstPoll = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    renderRoute(Catalog, {
+      path: "/catalog",
+      role: "admin",
+      fetch: {
+        ...BASE_FETCH,
+        "GET /api/catalog/batches/batch-1": { body: { pending: 1 }, after: firstPoll },
+      },
+    });
+    await screen.findByText(LIBRARY.purl);
+    await uploadFile();
+    await screen.findByText(/batch-1/);
+
+    // The second upload gets its own batch, which settles at once.
+    stubFetch({
+      ...BASE_FETCH,
+      "POST /api/catalog/upload": { body: { batch_id: "batch-2", created: 0, skipped: [] } },
+      "GET /api/catalog/batches/batch-2": { body: {} },
+    });
+    await uploadFile();
+    await screen.findByText(/— done: no new libraries to categorize/);
+
+    releaseFirst();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByText(/— done: no new libraries to categorize/)).toBeTruthy();
+    expect(screen.queryByText("pending: 1")).toBeNull();
   });
 });
 

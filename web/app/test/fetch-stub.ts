@@ -3,10 +3,11 @@ import { vi } from "vitest";
 // A stubbed answer for one request. An object is sent as a real Response
 // whose body is the raw JSON of `body` (so `body: null` arrives as the
 // literal `null`, exactly like a Go nil slice); omit `body` for an empty
-// body. "pending" never settles (loading state); "network-error" rejects
-// the way fetch does when the server is unreachable.
+// body; `after` holds the answer until that promise settles (a late,
+// out-of-order response). "pending" never settles (loading state);
+// "network-error" rejects the way fetch does when the server is unreachable.
 export type StubResponse =
-  | { status?: number; body?: unknown }
+  | { status?: number; body?: unknown; after?: Promise<unknown> }
   | "pending"
   | "network-error";
 
@@ -48,6 +49,9 @@ export function stubFetch(routes: Record<string, StubResponse>): void {
       }
       if (stub === "network-error") {
         throw new TypeError("Failed to fetch");
+      }
+      if (stub.after) {
+        await stub.after;
       }
       const body = "body" in stub ? JSON.stringify(stub.body) : null;
       return new Response(body, {
