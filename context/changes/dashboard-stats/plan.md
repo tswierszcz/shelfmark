@@ -233,26 +233,26 @@ There are four or five aggregate queries plus one strategic-index load per reque
 
 #### Automated
 
-- [x] 1.1 Backend vet passes: `cd backend && go vet ./...`
-- [x] 1.2 Backend tests pass: `cd backend && go test ./...`
-- [x] 1.3 Dashboard tests actually ran: `cd backend && go test ./internal/catalog -run 'TestDashboard' -v` shows PASS, not SKIP, for every dashboard test (Docker must be reachable)
-- [x] 1.4 Counting `is_direct` regardless of its value (dropping the direct filter) makes `TestDashboardStats_HotspotCountsOnlyDirectProjectLibraries` fail, and restoring it makes it pass
+- [x] 1.1 Backend vet passes: `cd backend && go vet ./...` — 5762628
+- [x] 1.2 Backend tests pass: `cd backend && go test ./...` — 5762628
+- [x] 1.3 Dashboard tests actually ran: `cd backend && go test ./internal/catalog -run 'TestDashboard' -v` shows PASS, not SKIP, for every dashboard test (Docker must be reachable) — 5762628
+- [x] 1.4 Counting `is_direct` regardless of its value (dropping the direct filter) makes `TestDashboardStats_HotspotCountsOnlyDirectProjectLibraries` fail, and restoring it makes it pass — 5762628
 
 #### Manual
 
-- [x] 1.5 On a local server with the seed data, `curl` with an architect session cookie to `/api/dashboard` returns the documented shape, and without a cookie returns `401`
+- [x] 1.5 On a local server with the seed data, `curl` with an architect session cookie to `/api/dashboard` returns the documented shape, and without a cookie returns `401` — 5762628
 
 ### Phase 2: Dashboard view
 
 #### Automated
 
-- [ ] 2.1 Frontend tests pass: `cd web && npm test`
-- [ ] 2.2 Type checking passes: `cd web && npm run typecheck`
-- [ ] 2.3 Build passes: `cd web && npm run build`
-- [ ] 2.4 E2E seed spec passes: `cd web && npx playwright test tests/e2e/seed.spec.ts`
-- [ ] 2.5 Removing the role check on the architect call to action makes `npm test` fail, and restoring it makes it pass
+- [x] 2.1 Frontend tests pass: `cd web && npm test`
+- [x] 2.2 Type checking passes: `cd web && npm run typecheck`
+- [x] 2.3 Build passes: `cd web && npm run build`
+- [x] 2.4 E2E seed spec passes: `cd web && npx playwright test tests/e2e/seed.spec.ts`
+- [x] 2.5 Removing the role check on the architect call to action makes `npm test` fail, and restoring it makes it pass
 
 #### Manual
 
-- [ ] 2.6 On a local build, admin, architect and viewer each see the statistics, and the numbers match the seed data (cross-check with `/catalog` and `/organization`)
-- [ ] 2.7 The page reads well at phone width (375 px) and in dark mode
+- [x] 2.6 On a local build, admin, architect and viewer each see the statistics, and the numbers match the seed data (cross-check with `/catalog` and `/organization`)
+- [x] 2.7 The page reads well at phone width (375 px) and in dark mode
