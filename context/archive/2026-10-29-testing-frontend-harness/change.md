@@ -1,10 +1,10 @@
 ---
 change_id: testing-frontend-harness
 title: Testing frontend harness
-status: impl_reviewed
+status: archived
 created: 2026-10-29
-updated: 2026-10-29
-archived_at: null
+updated: 2026-10-30
+archived_at: 2026-10-30T08:12:03Z
 ---
 
 ## Notes

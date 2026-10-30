@@ -1,8 +1,10 @@
-import { Link } from "react-router";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router";
 
 import type { Route } from "./+types/home";
 import { BUTTON_VARIANT_CLASSES } from "../components/button";
 import { Logo } from "../components/logo";
+import { useAuth } from "../lib/auth";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -34,6 +36,17 @@ const POINTS = [
 ];
 
 export default function Home() {
+  const { me, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // The landing renders at once for everyone; a signed-in user is sent on to
+  // the app as soon as /api/me answers. replace keeps Back off the landing.
+  useEffect(() => {
+    if (!loading && me) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [loading, me, navigate]);
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="pt-12 sm:pt-16 lg:pt-20">
@@ -43,11 +56,6 @@ export default function Home() {
             <Link to="/login" className={BUTTON_VARIANT_CLASSES.secondary}>
               Zaloguj
             </Link>
-          </div>
-
-          <div className="mb-6 inline-flex items-center gap-2 text-xs uppercase tracking-[.09em] text-ink-faint">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_18%,transparent)]" />
-            In development
           </div>
 
           <h1 className="mb-6 max-w-[20ch] font-serif text-[clamp(2rem,7vw,3.25rem)] leading-[1.12] tracking-[-.02em]">
@@ -91,7 +99,7 @@ export default function Home() {
             </p>
             <a
               className="inline-block rounded-full bg-accent px-6 py-3 text-[.95rem] font-medium text-bg transition hover:-translate-y-px hover:shadow-[0_6px_20px_-6px_color-mix(in_srgb,var(--color-accent)_50%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent"
-              href="mailto:hello@shelfmark.dev?subject=Shelfmark"
+              href="mailto:hello@shelfmark.online?subject=Shelfmark"
             >
               Get in touch
             </a>
@@ -102,8 +110,8 @@ export default function Home() {
       <footer className="mt-auto border-t border-rule py-8 text-[.8rem] text-ink-faint">
         <div className="mx-auto flex w-full max-w-[44rem] flex-wrap justify-between gap-x-6 gap-y-2 px-4">
           <span>Shelfmark</span>
-          <a className="text-ink-faint" href="mailto:hello@shelfmark.dev">
-            hello@shelfmark.dev
+          <a className="text-ink-faint" href="mailto:hello@shelfmark.online">
+            hello@shelfmark.online
           </a>
         </div>
       </footer>
