@@ -51,6 +51,7 @@ func routes(d deps) []route {
 		{"GET", "/api/catalog/batches/{batchID}", adminArchitect, catalog.BatchProgressHandler(d.Catalog)},
 		{"GET", "/api/catalog/libraries", admin, catalog.ListLibrariesHandler(d.Catalog)},
 		{"GET", "/api/catalog/categories", everyone, catalog.ListTaxonomyHandler(d.Catalog)},
+		{"GET", "/api/dashboard", everyone, catalog.DashboardHandler(d.Catalog)},
 		{"POST", "/api/catalog/libraries/{libraryID}/categories", admin, catalog.AttachCategoryHandler(d.Catalog)},
 		{"GET", "/api/organization/libraries", architectViewer, catalog.ListOrganizationLibrariesHandler(d.Catalog)},
 		{"POST", "/api/organization/libraries/{libraryID}/categories/{categoryID}/strategic", architect, catalog.MarkStrategicHandler(d.Catalog)},

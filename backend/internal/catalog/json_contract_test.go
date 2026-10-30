@@ -156,6 +156,21 @@ func TestListOrganizationLibrariesHandler_EmptyAndUncategorized_NoNullArrays(t *
 	assertLibraryListContract(t, ListOrganizationLibrariesHandler, "/api/organization/libraries")
 }
 
+func TestDashboardHandler_EmptyDatabase_NoNullArrays(t *testing.T) {
+	store := NewStore(startTestPostgres(t))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/dashboard", nil)
+	rec := httptest.NewRecorder()
+	DashboardHandler(store)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.Bytes()
+	assertNoNullArrays(t, body)
+	assertEmptyArrayField(t, body, "hotspots")
+}
+
 func TestBatchProgressHandler_UnknownBatch_ReturnsEmptyObject(t *testing.T) {
 	store := NewStore(startTestPostgres(t))
 
