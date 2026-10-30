@@ -246,13 +246,13 @@ There are four or five aggregate queries plus one strategic-index load per reque
 
 #### Automated
 
-- [x] 2.1 Frontend tests pass: `cd web && npm test`
-- [x] 2.2 Type checking passes: `cd web && npm run typecheck`
-- [x] 2.3 Build passes: `cd web && npm run build`
-- [x] 2.4 E2E seed spec passes: `cd web && npx playwright test tests/e2e/seed.spec.ts`
-- [x] 2.5 Removing the role check on the architect call to action makes `npm test` fail, and restoring it makes it pass
+- [x] 2.1 Frontend tests pass: `cd web && npm test` — b084d9e
+- [x] 2.2 Type checking passes: `cd web && npm run typecheck` — b084d9e
+- [x] 2.3 Build passes: `cd web && npm run build` — b084d9e
+- [x] 2.4 E2E seed spec passes: `cd web && npx playwright test tests/e2e/seed.spec.ts` — b084d9e
+- [x] 2.5 Removing the role check on the architect call to action makes `npm test` fail, and restoring it makes it pass — b084d9e
 
 #### Manual
 
-- [x] 2.6 On a local build, admin, architect and viewer each see the statistics, and the numbers match the seed data (cross-check with `/catalog` and `/organization`)
-- [x] 2.7 The page reads well at phone width (375 px) and in dark mode
+- [x] 2.6 On a local build, admin, architect and viewer each see the statistics, and the numbers match the seed data (cross-check with `/catalog` and `/organization`) — b084d9e
+- [x] 2.7 The page reads well at phone width (375 px) and in dark mode — b084d9e
