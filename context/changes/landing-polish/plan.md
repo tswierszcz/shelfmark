@@ -112,13 +112,13 @@ Apply the three landing fixes and add a route test for them.
 
 #### Automated
 
-- [x] 1.1 Frontend tests pass: `cd web && npm test`
-- [x] 1.2 Type checking passes: `cd web && npm run typecheck`
-- [x] 1.3 Build passes: `cd web && npm run build`
-- [x] 1.4 `grep -rn "shelfmark.dev\|In development" web/app` returns no matches
-- [x] 1.5 Removing the redirect effect from `home.tsx` makes `npm test` fail, and restoring it makes it pass
+- [x] 1.1 Frontend tests pass: `cd web && npm test` — f1559bc
+- [x] 1.2 Type checking passes: `cd web && npm run typecheck` — f1559bc
+- [x] 1.3 Build passes: `cd web && npm run build` — f1559bc
+- [x] 1.4 `grep -rn "shelfmark.dev\|In development" web/app` returns no matches — f1559bc
+- [x] 1.5 Removing the redirect effect from `home.tsx` makes `npm test` fail, and restoring it makes it pass — f1559bc
 
 #### Manual
 
-- [x] 1.6 On a local build, opening `/` while logged out shows the landing with no badge and with `hello@shelfmark.online` in the button and footer
-- [x] 1.7 After logging in, opening `/` lands on `/dashboard`, and browser Back does not return to the landing
+- [x] 1.6 On a local build, opening `/` while logged out shows the landing with no badge and with `hello@shelfmark.online` in the button and footer — f1559bc
+- [x] 1.7 After logging in, opening `/` lands on `/dashboard`, and browser Back does not return to the landing — f1559bc

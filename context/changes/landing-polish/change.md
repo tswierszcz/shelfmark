@@ -1,7 +1,7 @@
 ---
 change_id: landing-polish
 title: Landing page polish (contact address, badge, logged-in redirect)
-status: implementing
+status: implemented
 created: 2026-10-30
 updated: 2026-10-30
 archived_at: null
