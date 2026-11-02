@@ -82,6 +82,17 @@ Every deploy has a short outage: there is one Machine and the `rolling` strategy
 
 **Migrations don't roll back.** Rolling back the image leaves the schema where the newer release put it. Keep every migration additive and backward-compatible with the previous release (expand, then contract in a later release). Test `migrate up` against a copy of the data before shipping anything risky.
 
+## Implementation review in CI
+
+`.github/workflows/impl-review.yml` runs the `10x-impl-review-ci` skill on a PR and checks the implementation against its plan. It only runs on same-repo PRs that carry the `impl-review` label.
+
+- **Trigger**: add the label when opening the PR (`gh pr create --label impl-review`) or later (`gh pr edit <n> --add-label impl-review`). Each new push to a labelled PR runs the review again.
+- **Report**: Claude commits it to the PR branch as `context/changes/<id>/reviews/impl-review-ci.md`, next to the plan, and posts a summary comment plus inline comments. A local, triaged `reviews/impl-review.md` is never overwritten. Pull the branch to read or triage it.
+- **Gate**: the verdict sets the `impl-review-ci/verdict` commit status. `APPROVED` and `NEEDS ATTENTION` pass; `REJECTED` fails it until the `impl-review-override` label is added to the PR (adding it re-runs only the verdict check, not the review).
+- **Release PRs** that bundle several changes review one plan: name it with a `Plan: context/changes/<id>/plan.md` line in the PR description. Without that line the skill picks the changed `plan.md` whose path sorts last alphabetically.
+- **Cost**: `ANTHROPIC_API_KEY` is a GitHub repo secret (Settings → Secrets and variables → Actions); every run is billed to it.
+- **Skill source**: the workflow reads the skill from the PR's **base** branch (`origin/<base>:.claude/skills/10x-impl-review-ci`), so a skill change takes effect only after it is merged into the base branch.
+
 ## Observe
 
 The image is distroless: there is no shell, so `fly ssh console` and in-Machine `psql` are not available. Use logs, the health check and a DB proxy instead.

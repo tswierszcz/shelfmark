@@ -1,9 +1,9 @@
 ---
 change_id: impl-review-ci
 title: Run /10x-impl-review-ci on pull requests in GitHub Actions
-status: new
+status: implementing
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-11-02
 archived_at: null
 ---
 
