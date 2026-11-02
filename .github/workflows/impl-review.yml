@@ -113,7 +113,7 @@ jobs:
           # commits, so bot commits from earlier PRs sit in base-branch
           # history; an unscoped lookup would skip every first review.
           PRIOR_CLAUDE=$(git log origin/"$BASE_REF"..HEAD --author='claude\[bot\]' -1 --format='%H' 2>/dev/null || true)
-          if [[ "$AUTHOR" == "claude[bot]" || "$SUBJECT" == *"[skip ci]"* ]]; then
+          if [[ "$AUTHOR" == "claude[bot]" ]]; then
             # HEAD is the bot's own commit — don't recurse.
             echo "skip=true" >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_ACTION" == "labeled" || "$EVENT_ACTION" == "unlabeled" ]] && [[ -n "$PRIOR_CLAUDE" ]]; then
@@ -200,7 +200,7 @@ jobs:
                 tests start Postgres via Docker, ~3 min).
               - There is no `oxfmt` in this repo; skip any oxfmt check.
 
-      - name: Validate Claude's commit (skip-ci + output contract)
+      - name: Validate Claude's commit (output contract)
         # `if: always()` so this re-evaluates the latest tip regardless of
         # whether the Claude step ran — catches off-contract bot commits
         # observed on follow-up runs that would otherwise pass silently.
@@ -226,10 +226,14 @@ jobs:
 
           FAILED=0
 
-          # Check 1: [skip ci] marker — without it, the push retriggers
-          # this workflow on the bot's own HEAD and we risk a loop.
-          if [[ "$SUBJECT" != *"[skip ci]"* ]]; then
-            echo "::error title=Missing [skip ci] marker::Bot commit \"$SUBJECT\" lacks [skip ci]. The skill must include the marker to prevent workflow recursion."
+          # Check 1 (Shelfmark): the bot commit must NOT carry [skip ci].
+          # With it on HEAD, GitHub drops every pull_request event for the
+          # PR, label toggles included, so `impl-review-override` could not
+          # re-evaluate the verdict. No loop without it: the push uses
+          # GITHUB_TOKEN (never triggers workflows) and the guard skips
+          # Claude on bot-authored HEADs.
+          if [[ "$SUBJECT" == *"[skip ci]"* ]]; then
+            echo "::error title=Unexpected [skip ci] marker::Bot commit \"$SUBJECT\" carries [skip ci], which blocks label-driven verdict re-evaluation. Re-apply the Shelfmark patch to the skill."
             FAILED=1
           fi
 
@@ -267,7 +271,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # Why a manual commit status instead of the GHA-auto check?
-          # The skill commits the review with [skip ci], so no workflow
+          # The skill pushes the review with GITHUB_TOKEN, so no workflow
           # triggers on the bot commit — which is the PR's current HEAD.
           # GHA's auto-created check-run is attached to the *pre-bot*
           # commit, invisible in the PR's Checks UI. We POST a status
