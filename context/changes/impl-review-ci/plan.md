@@ -220,22 +220,22 @@ None. Existing archived reviews keep the `impl-review.md` name; new CI reports s
 
 #### Automated
 
-- [x] 1.1 Skill is tracked and other skills are not: `git check-ignore -q .claude/skills/10x-impl-review-ci/SKILL.md` exits 1 and `git check-ignore -q .claude/skills/10x-plan/SKILL.md` exits 0
-- [x] 1.2 Workflow passes actionlint: `cd backend && go run github.com/rhysd/actionlint/cmd/actionlint@latest ../.github/workflows/impl-review.yml`
-- [x] 1.3 Skill writes only the CI report path: `grep -c 'reviews/impl-review-ci.md' .claude/skills/10x-impl-review-ci/SKILL.md` is at least 2 and `grep -n 'reviews/impl-review\.md' .claude/skills/10x-impl-review-ci/SKILL.md` prints nothing
-- [x] 1.4 Workflow uses Sonnet and the label gate: `grep -q 'claude-sonnet-5-5' .github/workflows/impl-review.yml && grep -q "labels.\*.name, 'impl-review'" .github/workflows/impl-review.yml`
-- [x] 1.5 Bot-commit lookups are scoped to the PR: `grep -c 'origin/"\?\$BASE_REF"\?\.\.HEAD' .github/workflows/impl-review.yml` is at least 2
+- [x] 1.1 Skill is tracked and other skills are not: `git check-ignore -q .claude/skills/10x-impl-review-ci/SKILL.md` exits 1 and `git check-ignore -q .claude/skills/10x-plan/SKILL.md` exits 0 — c540476
+- [x] 1.2 Workflow passes actionlint: `cd backend && go run github.com/rhysd/actionlint/cmd/actionlint@latest ../.github/workflows/impl-review.yml` — c540476
+- [x] 1.3 Skill writes only the CI report path: `grep -c 'reviews/impl-review-ci.md' .claude/skills/10x-impl-review-ci/SKILL.md` is at least 2 and `grep -n 'reviews/impl-review\.md' .claude/skills/10x-impl-review-ci/SKILL.md` prints nothing — c540476
+- [x] 1.4 Workflow uses Sonnet and the label gate: `grep -q 'claude-sonnet-5-5' .github/workflows/impl-review.yml && grep -q "labels.\*.name, 'impl-review'" .github/workflows/impl-review.yml` — c540476
+- [x] 1.5 Bot-commit lookups are scoped to the PR: `grep -c 'origin/"\?\$BASE_REF"\?\.\.HEAD' .github/workflows/impl-review.yml` is at least 2 — c540476
 
 #### Manual
 
-- [x] 1.6 The prompt's Shelfmark block and the runbook section read correctly and match the decisions in this plan
+- [x] 1.6 The prompt's Shelfmark block and the runbook section read correctly and match the decisions in this plan — c540476
 
 ### Phase 2: GitHub setup and smoke run
 
 #### Automated
 
-- [ ] 2.1 Both labels exist: `gh label list --search impl-review` lists `impl-review` and `impl-review-override`
-- [ ] 2.2 Secret is set: `gh secret list` lists `ANTHROPIC_API_KEY`
+- [x] 2.1 Both labels exist: `gh label list --search impl-review` lists `impl-review` and `impl-review-override`
+- [x] 2.2 Secret is set: `gh secret list` lists `ANTHROPIC_API_KEY`
 
 #### Manual
 
