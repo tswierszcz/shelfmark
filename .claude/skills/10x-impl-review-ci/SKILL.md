@@ -23,7 +23,7 @@ allowed-tools:
 
 # Przegląd implementacji (CI/CD)
 
-> **Shelfmark patch.** Ta kopia jest zmodyfikowana dla Shelfmark: raport trafia do `reviews/impl-review-ci.md` (nie `impl-review.md`, aby nigdy nie nadpisać lokalnego, przetriażowanego przeglądu), a nagłówek raportu zawiera pole `Reviewed phases`. Po aktualizacji umiejętności zastosuj ten patch ponownie.
+> **Shelfmark patch.** Ta kopia jest zmodyfikowana dla Shelfmark: raport trafia do `reviews/impl-review-ci.md` (nie `impl-review.md`, aby nigdy nie nadpisać lokalnego, przetriażowanego przeglądu), a nagłówek raportu zawiera pole `Reviewed phases`; commit raportu nie ma `[skip ci]` (GitHub pomija wtedy wszystkie zdarzenia `pull_request` na tym HEAD, także zmiany etykiet, więc `impl-review-override` nie mógłby przeliczyć werdyktu). Po aktualizacji umiejętności zastosuj ten patch ponownie.
 
 Uruchamiaj w GitHub Actions (zwykle za pośrednictwem Claude Code Action) dla pull requesta. Analizuj zmiany w PR względem planu, który według deklaracji implementuje. Twórz ślad audytowy jako zatwierdzony plik raportu oraz zwięzły komentarz do PR.
 
@@ -254,20 +254,15 @@ git config user.name "claude[bot]"
 git config user.email "41898282+claude[bot]@users.noreply.github.com"
 
 git add "$REVIEW_PATH" "$CHANGE_MD"
-git commit -m "chore(review): impl-review for ${CHANGE_ID} [skip ci]
+git commit -m "chore(review): impl-review for ${CHANGE_ID}
 
 CI-generated implementation review.
 Pull this branch and triage locally."
 
-# Belt-and-suspenders: verify [skip ci] made it onto the commit before
-# pushing. If the subject is missing the marker (e.g., a rebase or an
-# amend stripped it), the push would retrigger this same workflow on
-# the bot's own HEAD. Abort loudly — a failed push is recoverable via
-# the PUSH_FAILED fallback below; a recursion loop isn't.
-if ! git log -1 --format=%s | grep -Fq '[skip ci]'; then
-  echo "ERROR: HEAD commit subject is missing [skip ci] — refusing to push to prevent workflow recursion" >&2
-  exit 1
-fi
+# Shelfmark: no [skip ci]. The push uses the workflow's GITHUB_TOKEN,
+# and GitHub never starts workflows for GITHUB_TOKEN pushes, so the bot
+# commit cannot retrigger this workflow. The workflow's guard also skips
+# the Claude step whenever HEAD is authored by claude[bot].
 
 # Retry once on concurrent-push race (common on active PRs)
 git push || { git pull --rebase && git push; } || PUSH_FAILED=1
@@ -279,7 +274,7 @@ if [ "$PUSH_FAILED" = "1" ]; then
 fi
 ```
 
-**Znacznik `[skip ci]` jest kluczowy.** Bez niego push ponownie uruchamia ten sam workflow i tworzy pętlę. Zawsze go uwzględniaj.
+**Nie dodawaj `[skip ci]` (Shelfmark).** Pętli zapobiega to, że push idzie tokenem `GITHUB_TOKEN` (GitHub nie uruchamia po nim workflow), oraz guard workflow, który pomija krok Claude, gdy HEAD jest od `claude[bot]`. `[skip ci]` na HEAD blokowałby zdarzenia etykiet (`impl-review-override`).
 
 **Idempotencja: nie stosuj amend, zawsze twórz nowy commit.** Jeśli ten workflow zostanie uruchomiony ponownie (np. przez ponowne uruchomienie z UI GHA lub późniejszy push go wywoła), plik przeglądu pod tą samą ścieżką zostanie nadpisany, a nowy commit zapisze nowy przegląd. Poprzednie przeglądy pozostają w historii git — to ślad audytowy. Amend by go usunął.
 
