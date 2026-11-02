@@ -234,12 +234,12 @@ None. Existing archived reviews keep the `impl-review.md` name; new CI reports s
 
 #### Automated
 
-- [x] 2.1 Both labels exist: `gh label list --search impl-review` lists `impl-review` and `impl-review-override`
-- [x] 2.2 Secret is set: `gh secret list` lists `ANTHROPIC_API_KEY`
+- [x] 2.1 Both labels exist: `gh label list --search impl-review` lists `impl-review` and `impl-review-override` — 92cf00b
+- [x] 2.2 Secret is set: `gh secret list` lists `ANTHROPIC_API_KEY` — 92cf00b
 
 #### Manual
 
-- [ ] 2.3 On the smoke PR the "Impl Review" run finishes and the bot pushes `chore(review): impl-review for impl-review-ci [skip ci]` adding `context/changes/impl-review-ci/reviews/impl-review-ci.md`, whose first line is `<!-- IMPL-REVIEW-REPORT -->` and which has a `Reviewed phases` line; the Validate step is green
-- [ ] 2.4 The PR shows a summary comment and an `impl-review-ci/verdict` status on the bot's commit, and the bot commit does not start another full review
-- [ ] 2.5 Removing and re-adding the `impl-review` label re-runs only the verdict check (Claude step skipped); if the verdict is `REJECTED`, adding `impl-review-override` turns the status green
+- [x] 2.3 On the smoke PR the "Impl Review" run finishes and the bot pushes `chore(review): impl-review for impl-review-ci [skip ci]` adding `context/changes/impl-review-ci/reviews/impl-review-ci.md`, whose first line is `<!-- IMPL-REVIEW-REPORT -->` and which has a `Reviewed phases` line; the Validate step is green — 92cf00b
+- [x] 2.4 The PR shows a summary comment and an `impl-review-ci/verdict` status on the bot's commit, and the bot commit does not start another full review — 92cf00b
+- [x] 2.5 Removing and re-adding the `impl-review` label re-runs only the verdict check (Claude step skipped); if the verdict is `REJECTED`, adding `impl-review-override` turns the status green — 92cf00b
 - [ ] 2.6 The run's cost on the Anthropic console is acceptable for one review per labelled PR
