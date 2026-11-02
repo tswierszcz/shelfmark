@@ -5,7 +5,7 @@
 - **Scope**: Full plan (CI review on PR #20)
 - **Reviewed phases**: none
 - **Date**: 2026-11-02
-- **CI run**: https://github.com/tswierszcz/shelfmark/actions/runs/41406968885
+- **CI run**: https://github.com/tswierszcz/shelfmark/actions/runs/41409449433
 - **Verdict**: APPROVED
 - **Findings**: 0 critical, 1 warnings, 2 observations
 
@@ -32,7 +32,8 @@ The PR diff against `shape/shelfmark` touches only `context/changes/impl-review-
 | 1.3 `reviews/impl-review-ci.md` count in SKILL.md ≥ 2, no `reviews/impl-review.md` | pass (5 matches, no stale path) |
 | 1.4 Sonnet model and label gate in workflow | pass |
 | 1.5 `origin/$BASE_REF..HEAD` lookups ≥ 2 | pass (3) |
-| 2.1 labels exist, 2.2 secret set | not checked in CI (needs `gh label`/`gh secret` access beyond the job); recorded as checked in the plan |
+| 2.1 labels exist | pass (`gh label list` shows `impl-review` and `impl-review-override`) |
+| 2.2 secret set | not verifiable in CI (`gh secret list` returns HTTP 403 for the job token); the Claude run itself is indirect evidence |
 | `npx playwright test ...` | none in the plan; not run in CI |
 | `go test ./...` | not in the plan (no application code changes); not run |
 
