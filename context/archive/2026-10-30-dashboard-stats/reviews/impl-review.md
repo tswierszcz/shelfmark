@@ -31,7 +31,7 @@ Diff since plan start (c2f0157..HEAD) matches the plan's file list: 0 MISSING, 0
 - **Location**: backend/internal/catalog/dashboard.go (hotspot query)
 - **Detail**: `project_libraries` has only `PRIMARY KEY (project_id, library_id)` (migration 0004), so `EXISTS (… WHERE pl.library_id = lc.library_id AND pl.is_direct)` cannot use an index on `library_id`. At today's size (tens of rows) this is irrelevant. With many projects and thousands of libraries it becomes a sequential scan per category attachment.
 - **Fix**: None now. If the dashboard becomes slow, add `CREATE INDEX ON project_libraries (library_id) WHERE is_direct` in a new migration.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED AS IS (2026-11-01) — revisit only if the dashboard gets slow.
 
 ### F2 — errorMessage is duplicated once more in lib/dashboard.ts
 
@@ -41,4 +41,4 @@ Diff since plan start (c2f0157..HEAD) matches the plan's file list: 0 MISSING, 0
 - **Location**: web/app/lib/dashboard.ts
 - **Detail**: The same private `errorMessage` helper now exists in 5 files (`catalog.ts`, `users.ts`, `projects.ts`, `organization.ts`, `dashboard.ts`). This follows the existing pattern but extends the duplication.
 - **Fix**: Leave as is. Extract a shared `lib/http.ts` helper in a separate refactor change if wanted.
-- **Decision**: PENDING
+- **Decision**: DEFERRED (2026-11-01) — candidate for a separate refactor change (shared `lib/http.ts`).

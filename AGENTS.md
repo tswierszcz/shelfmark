@@ -30,3 +30,4 @@ Claude Code hooks in `.claude/hooks/` run gofmt/vet/tsc after edits and at end o
 
 - Conventional Commits scoped to the change id: `fix(empty-batch-status): ... (p1)`, `chore(<id>): impl-review ...`, `test(e2e): ...`.
 - Branch from and open PRs into `shape/shelfmark`; it reaches `main` by PR. CI (@.github/workflows/ci.yml) must pass.
+- PRs implementing a plan may get the `impl-review` label to run the CI implementation review (`.github/workflows/impl-review.yml`, details in @docs/runbook.md).

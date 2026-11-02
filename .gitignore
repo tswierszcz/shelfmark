@@ -24,9 +24,14 @@ node_modules/
 
 # Local Claude Code settings and course skill downloads (not published).
 # Project hooks are committed: settings.json + hooks/ (settings.local.json stays local).
+# Exception: skills/10x-impl-review-ci/ is committed, because the Impl Review
+# workflow (.github/workflows/impl-review.yml) stages it from the PR's base branch.
 .claude/*
 !.claude/settings.json
 !.claude/hooks/
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/10x-impl-review-ci/
 
 # Editors and OS
 .idea/

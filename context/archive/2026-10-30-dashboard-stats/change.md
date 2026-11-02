@@ -1,10 +1,10 @@
 ---
 change_id: dashboard-stats
 title: Dashboard with catalog, project and redundancy statistics
-status: impl_reviewed
+status: archived
 created: 2026-10-30
-updated: 2026-10-30
-archived_at: null
+updated: 2026-11-01
+archived_at: 2026-11-01T21:00:07Z
 ---
 
 ## Notes
