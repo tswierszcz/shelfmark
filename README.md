@@ -6,7 +6,7 @@ so it can pick one standard per category and retire the rest.
 Security tools report what is *vulnerable*; Shelfmark reports what is *redundant*.
 Every duplicate library is one more thing to patch and track.
 
-**Live:** https://shelfmark-tsw.fly.dev
+**Live:** https://shelfmark.online
 
 ## How it works
 
